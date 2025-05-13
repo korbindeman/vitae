@@ -1,4 +1,4 @@
-use crate::immediate_ui::DrawCommand;
+use crate::immediate_ui::draw::DrawCommand;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

@@ -3,16 +3,20 @@ use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
 
-use crate::immediate_ui::{DrawCommand, RED};
+use crate::immediate_ui::elements::Element;
 use crate::renderer_wgpu::state::State;
 
 pub struct StateApplication<'a> {
     state: Option<State<'a>>,
+    root_element: Element,
 }
 
 impl<'a> StateApplication<'a> {
-    pub fn new() -> Self {
-        Self { state: None }
+    pub fn new(root_element: Element) -> Self {
+        Self {
+            state: None,
+            root_element,
+        }
     }
 }
 
@@ -21,7 +25,7 @@ impl<'a> ApplicationHandler for StateApplication<'a> {
         let window = event_loop
             .create_window(Window::default_attributes().with_title("Hello!"))
             .unwrap();
-        self.state = Some(State::new(window));
+        self.state = Some(State::new(window, self.root_element.clone()));
     }
 
     fn window_event(
@@ -41,17 +45,6 @@ impl<'a> ApplicationHandler for StateApplication<'a> {
                     self.state.as_mut().unwrap().resize(physical_size);
                 }
                 WindowEvent::RedrawRequested => {
-                    self.state
-                        .as_mut()
-                        .unwrap()
-                        .set_buffers(&[DrawCommand::Rect {
-                            x: 0.0,
-                            y: 0.0,
-                            width: 1.,
-                            height: 0.1,
-                            color: RED,
-                        }]);
-
                     self.state.as_mut().unwrap().render().unwrap();
                 }
                 _ => {}

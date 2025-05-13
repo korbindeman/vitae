@@ -6,7 +6,8 @@ use wgpu::{Adapter, Device, Instance, PresentMode, Queue, Surface, SurfaceCapabi
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
-use crate::immediate_ui::DrawCommand;
+use crate::immediate_ui::draw::DrawCommand;
+use crate::immediate_ui::elements::{Element, tree_to_draw_commands};
 
 use super::vertex::{Vertex, build_mesh};
 
@@ -25,10 +26,12 @@ pub struct State<'a> {
     index_buffer: wgpu::Buffer,
 
     num_indices: u32,
+
+    root_element: Element,
 }
 
 impl<'a> State<'a> {
-    pub fn new(window: Window) -> Self {
+    pub fn new(window: Window, root_element: Element) -> Self {
         let window_arc = Arc::new(window);
         let size = window_arc.inner_size();
         let instance = Self::create_gpu_instance();
@@ -86,7 +89,7 @@ impl<'a> State<'a> {
             cache: None,
         });
 
-        let (vertices, indices) = build_mesh(&[]);
+        let (vertices, indices) = build_mesh(tree_to_draw_commands(&root_element).as_slice());
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -112,28 +115,8 @@ impl<'a> State<'a> {
             vertex_buffer,
             index_buffer,
             num_indices,
+            root_element,
         }
-    }
-
-    pub fn set_buffers(&mut self, draw_commands: &[DrawCommand]) {
-        let (vertices, indices) = build_mesh(draw_commands);
-
-        self.vertex_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(vertices.as_slice()),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
-        self.index_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(indices.as_slice()),
-                usage: wgpu::BufferUsages::INDEX,
-            });
-        self.num_indices = indices.len() as u32;
     }
 
     fn create_surface_config(

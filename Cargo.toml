@@ -10,3 +10,4 @@ tracing-subscriber = "0.3.19"
 wgpu = "25.0.0"
 winit = "0.30"                                         # TODO: update to winit 0.30
 bytemuck = { version = "1.23", features = ["derive"] }
+glam = "0.30.3"

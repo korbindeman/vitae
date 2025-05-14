@@ -1,39 +1,40 @@
+use glam::Vec2;
+
 use super::draw::DrawCommand;
 
 #[derive(Clone)]
+pub enum Size {
+    Pixel(Vec2),
+    Percentage(Vec2),
+}
+
+#[derive(Clone)]
 pub struct Element {
-    name: String,
+    anchor: Vec2,
     color: [f32; 4],
     children: Vec<Element>,
-    width: u8,
-    height: u8,
+    size: Size,
 }
 
 impl Element {
-    pub fn new(name: &str, color: [f32; 4], children: Vec<Element>, width: u8, height: u8) -> Self {
-        if width > 100 {
-            panic!("Element width can't be larger than 100")
-        }
-        if height > 100 {
-            panic!("Element width can't be larger than 100")
-        }
-
+    pub fn new(color: [f32; 4], children: Vec<Element>, size: Size) -> Self {
         Element {
-            name: name.to_string(),
+            anchor: Vec2::splat(0.),
             color,
             children,
-            width,
-            height,
+            size,
         }
     }
 
     fn get_draw_command(&self) -> DrawCommand {
-        let width_fraction = self.width as f32 / 50.;
-        let height_fraction = self.height as f32 / 50.;
+        let (width_fraction, height_fraction) = match &self.size {
+            Size::Percentage(size) => (size.x / 50., size.y / 50.),
+            Size::Pixel(size) => (size.x / 50., size.y / 50.),
+        };
 
         DrawCommand::Rect {
-            x: -1.0,
-            y: 1.0 - height_fraction,
+            x: -1.0 + self.anchor.x,
+            y: 1.0 - height_fraction - self.anchor.y,
             width: width_fraction,
             height: height_fraction,
             color: self.color,

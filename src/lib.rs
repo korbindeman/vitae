@@ -7,7 +7,6 @@ use window::StateApplication;
 use winit::event_loop::EventLoop;
 
 pub struct App {
-    root_element: Element,
     event_loop: EventLoop<()>,
     window_state: StateApplication<'static>,
 }
@@ -15,7 +14,6 @@ pub struct App {
 impl App {
     pub fn new(root_element: Element) -> Self {
         App {
-            root_element: root_element.clone(),
             event_loop: EventLoop::new().unwrap(),
             window_state: StateApplication::new(root_element),
         }

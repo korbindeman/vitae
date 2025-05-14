@@ -6,7 +6,6 @@ use wgpu::{Adapter, Device, Instance, PresentMode, Queue, Surface, SurfaceCapabi
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
-use crate::immediate_ui::draw::DrawCommand;
 use crate::immediate_ui::elements::{Element, tree_to_draw_commands};
 
 use super::vertex::{Vertex, build_mesh};
@@ -26,8 +25,6 @@ pub struct State<'a> {
     index_buffer: wgpu::Buffer,
 
     num_indices: u32,
-
-    root_element: Element,
 }
 
 impl<'a> State<'a> {
@@ -93,13 +90,13 @@ impl<'a> State<'a> {
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(vertices.as_slice()),
+            contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(indices.as_slice()),
+            contents: bytemuck::cast_slice(&indices),
             usage: wgpu::BufferUsages::INDEX,
         });
         let num_indices = indices.len() as u32;
@@ -115,7 +112,6 @@ impl<'a> State<'a> {
             vertex_buffer,
             index_buffer,
             num_indices,
-            root_element,
         }
     }
 

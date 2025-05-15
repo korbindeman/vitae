@@ -1,24 +1,21 @@
+use glam::Vec2;
 use vitae::{
     App,
     immediate_ui::{
         colors::{RED, WHITE},
-        elements::{Element, Size},
+        elements::{ElementHandle, Size},
     },
 };
 
 fn main() {
-    let child_element = Element::new(
+    let root = ElementHandle::new_root(
+        Vec2::ZERO,
         WHITE,
-        Vec::new(),
-        Size::Percentage(glam::Vec2::new(50., 20.)),
-    );
-    let root_element = Element::new(
-        RED,
-        vec![child_element],
         Size::Percentage(glam::Vec2::new(100., 30.)),
     );
+    let _child = root.make_child(Vec2::ZERO, RED, Size::Percentage(glam::Vec2::new(40., 20.)));
 
-    let app = App::new(root_element);
+    let app = App::new(root);
 
     pollster::block_on(app.run());
 }

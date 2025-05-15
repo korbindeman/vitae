@@ -6,7 +6,7 @@ use wgpu::{Adapter, Device, Instance, PresentMode, Queue, Surface, SurfaceCapabi
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
-use crate::immediate_ui::elements::{Element, tree_to_draw_commands};
+use crate::immediate_ui::elements::{ElementHandle, tree_to_draw_commands};
 
 use super::vertex::{Vertex, build_mesh};
 
@@ -28,7 +28,7 @@ pub struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    pub fn new(window: Window, root_element: Element) -> Self {
+    pub fn new(window: Window, root_element: ElementHandle) -> Self {
         let window_arc = Arc::new(window);
         let size = window_arc.inner_size();
         let instance = Self::create_gpu_instance();

@@ -3,16 +3,16 @@ use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
 
-use crate::immediate_ui::elements::Element;
+use crate::immediate_ui::elements::ElementHandle;
 use crate::renderer_wgpu::state::State;
 
 pub struct StateApplication<'a> {
     state: Option<State<'a>>,
-    root_element: Element,
+    root_element: ElementHandle,
 }
 
 impl<'a> StateApplication<'a> {
-    pub fn new(root_element: Element) -> Self {
+    pub fn new(root_element: ElementHandle) -> Self {
         Self {
             state: None,
             root_element,
@@ -23,7 +23,7 @@ impl<'a> StateApplication<'a> {
 impl<'a> ApplicationHandler for StateApplication<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window = event_loop
-            .create_window(Window::default_attributes().with_title("Hello!"))
+            .create_window(Window::default_attributes().with_title("vitae"))
             .unwrap();
         self.state = Some(State::new(window, self.root_element.clone()));
     }

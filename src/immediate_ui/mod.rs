@@ -1,3 +1,4 @@
-pub mod colors;
+pub mod color;
 pub mod draw;
-pub mod elements;
+pub mod element;
+pub mod style;

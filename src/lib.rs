@@ -2,7 +2,7 @@ pub mod immediate_ui;
 mod renderer_wgpu;
 mod window;
 
-use immediate_ui::elements::ElementHandle;
+use immediate_ui::element::ElementHandle;
 use window::StateApplication;
 use winit::event_loop::EventLoop;
 

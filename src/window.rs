@@ -3,7 +3,7 @@ use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
 
-use crate::immediate_ui::elements::ElementHandle;
+use crate::immediate_ui::element::ElementHandle;
 use crate::renderer_wgpu::state::State;
 
 pub struct StateApplication<'a> {

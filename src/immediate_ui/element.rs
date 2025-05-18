@@ -14,6 +14,14 @@ pub enum Size {
     // Pixel(Vec2), // TODO: maybe add this
 }
 
+impl Size {
+    pub fn percent(width: f32, height: f32) -> Self {
+        Self::Percent(glam::Vec2::new(width, height))
+    }
+
+    pub const FULL: Self = Self::Percent(glam::Vec2::splat(100.));
+}
+
 #[derive(Clone, Debug)]
 pub enum Direction {
     Row,
@@ -83,34 +91,10 @@ impl ElementHandle {
         .into()
     }
 
-    pub fn make_child(
-        &self,
-        anchor: Vec2,
-        color: ColorRGBA,
-        size: Size,
-        direction: Direction,
-    ) -> Self {
-        let child_rc = Rc::new(RefCell::new(Element {
-            parent: Some(Rc::downgrade(&self.0)),
-            children: RefCell::new(Vec::new()),
-            anchor,
-            size,
-            style: Style::from_bg_color(color),
-            direction,
-        }));
-
-        self.0
-            .borrow_mut()
-            .children
-            .borrow_mut()
-            .push(child_rc.clone());
-
-        ElementHandle(child_rc)
-    }
-
-    pub fn add_child(&self, child: Self) {
+    pub fn child(&self, child: Self) -> Self {
         child.0.borrow_mut().parent = Some(Rc::downgrade(&self.0));
         self.0.borrow().children.borrow_mut().push(child.0.clone());
+        child
     }
 }
 

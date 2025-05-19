@@ -8,6 +8,10 @@ impl ColorRGBA {
         ColorRGBA(Vec4::new(r, g, b, a))
     }
 
+    pub fn rgb(r: f32, g: f32, b: f32) -> Self {
+        ColorRGBA(Vec4::new(r, g, b, 1.0))
+    }
+
     pub fn to_struct(&self) -> [f32; 4] {
         self.0.to_array()
     }

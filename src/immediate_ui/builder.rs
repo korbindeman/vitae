@@ -23,7 +23,7 @@ pub struct ElementBuilder {
 }
 
 impl ElementBuilder {
-    /// Entry point – defaults to Column, white background, full size.
+    /// Entry point – defaults to Column, transparent background, full size.
     pub fn new() -> Self {
         Self {
             anchor: Vec2::ZERO,
@@ -69,8 +69,12 @@ impl ElementBuilder {
         self
     }
 
-    pub fn children(mut self, mut new_children: Vec<ElementBuilder>) -> Self {
-        self.children.append(&mut new_children);
+    pub fn children<I>(mut self, new_children: I) -> Self
+    where
+        I: Iterator<Item = ElementBuilder>,
+    {
+        self.children
+            .append(&mut new_children.collect::<Vec<ElementBuilder>>());
         self
     }
 

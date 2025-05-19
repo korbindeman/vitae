@@ -19,7 +19,11 @@ impl App {
         }
     }
 
-    pub async fn run(mut self) {
+    pub fn run(self) {
+        pollster::block_on(self.run_event_loop());
+    }
+
+    async fn run_event_loop(mut self) {
         let _ = self.event_loop.run_app(&mut self.window_state);
     }
 }

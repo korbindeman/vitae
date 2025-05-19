@@ -3,16 +3,16 @@ use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
 
-use crate::immediate_ui::element::ElementHandle;
+use crate::immediate_ui::builder::ElementBuilder;
 use crate::renderer_wgpu::state::State;
 
 pub struct StateApplication<'a> {
     state: Option<State<'a>>,
-    root_element: ElementHandle,
+    root_element: ElementBuilder,
 }
 
 impl<'a> StateApplication<'a> {
-    pub fn new(root_element: ElementHandle) -> Self {
+    pub fn new(root_element: ElementBuilder) -> Self {
         Self {
             state: None,
             root_element,

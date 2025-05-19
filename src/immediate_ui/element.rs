@@ -6,7 +6,7 @@ use std::{
 
 use glam::Vec2;
 
-use super::{color::ColorRGBA, draw::DrawCommand, style::Style};
+use super::{builder::ElementBuilder, color::ColorRGBA, draw::DrawCommand, style::Style};
 
 #[derive(Clone, Debug)]
 pub enum Size {
@@ -17,6 +17,12 @@ pub enum Size {
 impl Size {
     pub fn percent(width: f32, height: f32) -> Self {
         Self::Percent(glam::Vec2::new(width, height))
+    }
+
+    pub fn fraction(&self) -> Vec2 {
+        match self {
+            Size::Percent(p) => *p / 100.0,
+        }
     }
 
     pub const FULL: Self = Self::Percent(glam::Vec2::splat(100.));
@@ -30,12 +36,12 @@ pub enum Direction {
 
 #[derive(Clone, Debug)]
 pub struct Element {
-    parent: Option<Weak<RefCell<Element>>>,
-    children: RefCell<Vec<Rc<RefCell<Element>>>>,
-    anchor: Vec2,
-    size: Size,
-    style: Style,
-    direction: Direction,
+    pub parent: Option<Weak<RefCell<Element>>>,
+    pub children: RefCell<Vec<Rc<RefCell<Element>>>>,
+    pub anchor: Vec2,
+    pub size: Size,
+    pub style: Style,
+    pub direction: Direction,
 }
 
 impl Element {
@@ -59,7 +65,7 @@ impl Element {
 }
 
 #[derive(Clone, Debug)]
-pub struct ElementHandle(Rc<RefCell<Element>>);
+pub struct ElementHandle(pub Rc<RefCell<Element>>);
 
 impl Deref for ElementHandle {
     type Target = Rc<RefCell<Element>>;
@@ -98,34 +104,50 @@ impl ElementHandle {
     }
 }
 
-pub fn tree_to_draw_commands(root: &ElementHandle) -> Vec<DrawCommand> {
-    /// depth-first walk that carries the parent’s absolute position.
-    fn collect(node: &ElementHandle, parent_pos: Vec2, out: &mut Vec<DrawCommand>) {
-        let node_ref = node.borrow();
+pub fn tree_to_draw_commands(root_builder: ElementBuilder, screen_px: Vec2) -> Vec<DrawCommand> {
+    let root = root_builder.build();
+    let mut out = Vec::new();
 
-        // absolute position of this element = parent absolute + local anchor
-        let mut global_pos = parent_pos + node_ref.anchor;
+    /// depth-first layout & paint
+    fn collect(
+        node: &ElementHandle,
+        origin: Vec2,    // absolute pos in px
+        parent_px: Vec2, // parent w×h in px
+        screen_px: Vec2, // screen dimensions in px
+        out: &mut Vec<DrawCommand>,
+    ) {
+        let n = node.borrow();
+        let frac = n.size.fraction();
+        let my_size = parent_px * frac; // own w×h in px
+        let my_origin = origin + n.anchor; // anchor is already in px
 
-        // generate the command using the global coordinate
-        out.push(node_ref.get_draw_command(global_pos));
+        // 1) paint myself ---------------------------------------------------
+        out.push(DrawCommand::Rect {
+            x: -1.0 + 2.0 * (my_origin.x / screen_px.x),
+            y: 1.0 - 2.0 * ((my_origin.y + my_size.y) / screen_px.y),
+            width: 2.0 * (my_size.x / screen_px.x),
+            height: 2.0 * (my_size.y / screen_px.y),
+            color: n.style.bg_color.to_struct(),
+        });
 
-        // recurse into children
-        for child_rc in node_ref.children.borrow().iter() {
-            // wrap the raw Rc in our handle to reuse the same API
+        // 2) lay out children ----------------------------------------------
+        let mut cursor = Vec2::ZERO;
+        for child_rc in n.children.borrow().iter() {
             let child = ElementHandle(child_rc.clone());
-            collect(&child, global_pos, out);
 
-            // add current element width to global_pos
-            // TODO: replace with actual layout logic
-            let current_anchor_offset = match node_ref.direction {
-                Direction::Row => Vec2::X * child_rc.borrow().get_clip().0,
-                Direction::Column => Vec2::Y * child_rc.borrow().get_clip().1,
+            let child_origin = my_origin + cursor;
+            collect(&child, child_origin, my_size, screen_px, out); // recurse
+
+            // advance cursor by child's *actual* pixel size
+            let c_frac = child_rc.borrow().size.fraction();
+            let c_px = my_size * c_frac;
+            cursor += match n.direction {
+                Direction::Row => Vec2::new(c_px.x, 0.0),
+                Direction::Column => Vec2::new(0.0, c_px.y),
             };
-            global_pos += current_anchor_offset;
         }
     }
 
-    let mut commands = Vec::new();
-    collect(root, Vec2::ZERO, &mut commands);
-    commands
+    collect(&root, Vec2::ZERO, screen_px, screen_px, &mut out);
+    out
 }

@@ -2,7 +2,7 @@ pub mod immediate_ui;
 mod renderer_wgpu;
 mod window;
 
-use immediate_ui::element::ElementHandle;
+use immediate_ui::builder::ElementBuilder;
 use window::StateApplication;
 use winit::event_loop::EventLoop;
 
@@ -12,7 +12,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(root_element: ElementHandle) -> Self {
+    pub fn new(root_element: ElementBuilder) -> Self {
         App {
             event_loop: EventLoop::new().unwrap(),
             window_state: StateApplication::new(root_element),

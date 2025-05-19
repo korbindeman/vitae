@@ -36,7 +36,7 @@ impl Default for Style {
         Self {
             margin: Vec4::splat(0.0),
             padding: Vec4::splat(0.0),
-            bg_color: ColorRGBA::WHITE,
+            bg_color: ColorRGBA::TRANSPARENT,
         }
     }
 }

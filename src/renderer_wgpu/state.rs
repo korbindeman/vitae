@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
+use glam::Vec2;
 use pollster::FutureExt;
 use wgpu::util::DeviceExt;
 use wgpu::{Adapter, Device, Instance, PresentMode, Queue, Surface, SurfaceCapabilities};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
-use crate::immediate_ui::element::{ElementHandle, tree_to_draw_commands};
+use crate::immediate_ui::builder::ElementBuilder;
+use crate::immediate_ui::element::tree_to_draw_commands;
 
 use super::vertex::{Vertex, build_mesh};
 
@@ -28,7 +30,7 @@ pub struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    pub fn new(window: Window, root_element: ElementHandle) -> Self {
+    pub fn new(window: Window, root_element: ElementBuilder) -> Self {
         let window_arc = Arc::new(window);
         let size = window_arc.inner_size();
         let instance = Self::create_gpu_instance();
@@ -86,7 +88,12 @@ impl<'a> State<'a> {
             cache: None,
         });
 
-        let (vertices, indices) = build_mesh(tree_to_draw_commands(&root_element).as_slice());
+        let cmds = tree_to_draw_commands(
+            root_element,
+            Vec2::new(size.width as f32, size.height as f32),
+        );
+
+        let (vertices, indices) = build_mesh(cmds.as_slice());
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),

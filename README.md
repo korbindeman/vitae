@@ -11,6 +11,7 @@ A work-in-progress, GPU-accelerated desktop UI library.
 - [ ] Cargo workspace
 - [ ] Retained mode
 - [ ] State management (probably ECS)
+- [ ] Accessibility
 
 ---
 

@@ -1,13 +1,10 @@
 mod utils;
 
 use utils::checkerboard;
-use vitae::{
-    App,
-    immediate_ui::{element::Direction, elements::div::div},
-};
+use vitae::{App, immediate_ui::elements::div::div};
 
 fn main() {
-    let root = div().direction(Direction::Column).children((0..8).map(|x| {
+    let root = div().col().children((0..8).map(|x| {
         div()
             .height(100. / 8.)
             .children((0..8).map(|y| div().background(checkerboard(x, y)).width(100. / 8.)))

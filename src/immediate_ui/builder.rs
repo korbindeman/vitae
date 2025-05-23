@@ -41,10 +41,18 @@ impl ElementBuilder {
         self.anchor = xy;
         self
     }
-    pub fn direction(mut self, dir: Direction) -> Self {
-        self.direction = dir;
+    pub fn row(mut self) -> Self {
+        self.direction = Direction::Row;
         self
     }
+    pub fn col(mut self) -> Self {
+        self.direction = Direction::Column;
+        self
+    }
+    // pub fn direction(mut self, dir: Direction) -> Self {
+    //     self.direction = dir;
+    //     self
+    // }
 
     pub fn background(mut self, c: ColorRGBA) -> Self {
         self.style.bg_color = c;

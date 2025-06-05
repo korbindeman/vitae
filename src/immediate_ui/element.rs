@@ -70,7 +70,7 @@ impl ElementTree {
         })
     }
 
-    fn mark_dirty(&mut self, id: ElementId) {
+    fn _mark_dirty(&mut self, id: ElementId) {
         let mut cur = Some(id);
         while let Some(node) = cur {
             if !self.arena[node].dirty {
@@ -92,8 +92,8 @@ pub fn layout(
     tree: &mut ElementTree,
     id: ElementId,
     constraints: Constraints,
-    mut cursor_x: f32,
-    mut cursor_y: f32,
+    cursor_x: f32,
+    cursor_y: f32,
 ) -> (f32, f32) {
     // Get style and direction first before any mutable borrows
     let (style_width, style_height, dir) = {

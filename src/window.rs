@@ -46,7 +46,7 @@ impl<'a> ApplicationHandler for StateApplication<'a> {
                 }
                 WindowEvent::ScaleFactorChanged {
                     scale_factor,
-                    inner_size_writer,
+                    inner_size_writer: _,
                 } => {
                     self.state.as_mut().unwrap().scale_factor(scale_factor);
                 }

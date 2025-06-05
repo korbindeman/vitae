@@ -7,10 +7,9 @@ use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
 use crate::immediate_ui::builder::ElementBuilder;
-use crate::immediate_ui::color::Color;
-use crate::immediate_ui::draw::{DrawCommand, push_draw_commands};
+use crate::immediate_ui::draw::push_draw_commands;
 use crate::immediate_ui::element::layout;
-use crate::immediate_ui::layout::{self, Constraints};
+use crate::immediate_ui::layout::Constraints;
 
 use super::vertex::{Vertex, build_mesh};
 

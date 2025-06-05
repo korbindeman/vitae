@@ -1,3 +1,5 @@
+use crate::immediate_ui::style::EdgeSizes;
+
 use super::{
     color::Color,
     element::ElementTree,
@@ -57,6 +59,15 @@ impl ElementBuilder {
     // pub fn aspect_ratio(mut self, ratio: f32) -> Self {
     //     todo!()
     // }
+
+    pub fn p(mut self, size: Length) -> Self {
+        self.style.padding = EdgeSizes::splat(size);
+        self
+    }
+    pub fn m(mut self, size: Length) -> Self {
+        self.style.margin = EdgeSizes::splat(size);
+        self
+    }
 
     /// Add a child to the element.
     pub fn child(mut self, child: ElementBuilder) -> Self {

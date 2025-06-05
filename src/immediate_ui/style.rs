@@ -7,6 +7,15 @@ pub enum Length {
     Auto,
 }
 
+impl Length {
+    pub fn as_px(&self) -> f32 {
+        match self {
+            Length::Px(px) => *px,
+            _ => 0.0,
+        }
+    }
+}
+
 pub fn px(value: f32) -> Length {
     Length::Px(value)
 }
@@ -33,6 +42,26 @@ pub struct EdgeSizes {
     pub right: Length,
     pub bottom: Length,
     pub left: Length,
+}
+
+impl EdgeSizes {
+    pub fn new(top: Length, right: Length, bottom: Length, left: Length) -> Self {
+        Self {
+            top,
+            right,
+            bottom,
+            left,
+        }
+    }
+
+    pub fn splat(value: Length) -> Self {
+        Self {
+            top: value,
+            right: value,
+            bottom: value,
+            left: value,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

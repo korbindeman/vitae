@@ -7,18 +7,22 @@ use vitae::{
 };
 
 fn main() {
-    let root = div().bg(Color::BLUE).col().children((0..8).map(|x| {
-        div()
-            .row()
-            .h(px(1200. / 8.))
-            .w(px(1200.))
-            .children((0..8).map(|y| {
-                div()
-                    .bg(checkerboard(x, y))
-                    .w(px(1200. / 8.))
-                    .h(px(1200. / 8.))
-            }))
-    }));
+    let root = div()
+        .bg(Color::BLUE)
+        .p(px(10.))
+        .col()
+        .children((0..8).map(|x| {
+            div()
+                .row()
+                .h(px(1180. / 8.))
+                .w(px(1180.))
+                .children((0..8).map(|y| {
+                    div()
+                        .bg(checkerboard(x, y))
+                        .w(px(1180. / 8.))
+                        .h(px(1180. / 8.))
+                }))
+        }));
 
     let app = App::new(root);
 

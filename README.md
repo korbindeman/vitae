@@ -5,7 +5,7 @@ A work-in-progress, GPU-accelerated desktop UI library.
 ### Planned features
 - [x] Basic styling (barely)
 - [x] Fluent builder API (rudimentary)
-- [ ] Layout engine
+- [x] Layout engine (basic)
 - [ ] Immediate mode
 - [ ] Text rendering
 - [ ] Cargo workspace

@@ -35,10 +35,10 @@ pub struct State<'a> {
 
 impl<'a> State<'a> {
     pub fn new(window: Window, root_element: ElementBuilder) -> Self {
-        let window_arc = Arc::new(window);
-        let size = window_arc.inner_size();
+        let window = Arc::new(window);
+        let size = window.inner_size();
         let instance = Self::create_gpu_instance();
-        let surface = instance.create_surface(window_arc.clone()).unwrap();
+        let surface = instance.create_surface(window.clone()).unwrap();
         let adapter = Self::create_adapter(instance, &surface);
         let (device, queue) = Self::create_device(&adapter);
         let surface_caps = surface.get_capabilities(&adapter);
@@ -47,16 +47,9 @@ impl<'a> State<'a> {
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            });
-
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
-            layout: Some(&render_pipeline_layout),
+            layout: None,
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
@@ -135,7 +128,7 @@ impl<'a> State<'a> {
             queue,
             config,
             size,
-            window: window_arc,
+            window,
             scale_factor: 1.0,
             render_pipeline,
             vertex_buffer,
@@ -207,6 +200,51 @@ impl<'a> State<'a> {
 
         self.surface.configure(&self.device, &self.config);
 
+        self.rebuild_mesh();
+
+        println!("resized to {:?}", new_size);
+    }
+
+    pub fn scale_factor(&mut self, scale_factor: f64) {
+        self.scale_factor = scale_factor;
+    }
+
+    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        // TODO: check for dirty bit
+        let frame = self.surface.get_current_texture().unwrap();
+        let view = frame.texture.create_view(&Default::default());
+
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("ui pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                ..Default::default()
+            });
+
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+        }
+
+        self.queue.submit(Some(encoder.finish()));
+
+        frame.present();
+
+        Ok(())
+    }
+
+    fn rebuild_mesh(&mut self) {
         let mut tree = self.root_element.clone().build();
         let root = tree.root;
         layout(
@@ -219,52 +257,35 @@ impl<'a> State<'a> {
             0.0,
             0.0,
         );
+        let mut cmds = Vec::new();
 
-        println!("Resized to {:?} from state!", new_size);
-    }
+        push_draw_commands(
+            &tree,
+            tree.root,
+            &mut cmds,
+            self.size.width as f32,
+            self.size.height as f32,
+        );
 
-    pub fn scale_factor(&mut self, scale_factor: f64) {
-        self.scale_factor = scale_factor;
-    }
+        let (verts, inds) = build_mesh(cmds.as_slice());
 
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture().unwrap();
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-
-        let mut encoder = self
+        self.vertex_buffer = self
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(&verts),
+                usage: wgpu::BufferUsages::VERTEX,
             });
 
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                occlusion_query_set: None,
-                timestamp_writes: None,
+        self.index_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(&inds),
+                usage: wgpu::BufferUsages::INDEX,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
-        }
-
-        self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
-
-        Ok(())
+        self.num_indices = inds.len() as u32;
     }
 
     pub fn window(&self) -> &Window {

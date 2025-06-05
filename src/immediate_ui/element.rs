@@ -113,8 +113,6 @@ pub fn layout(
     let mut max_cross: f32 = 0.0;
     let mut main_total: f32 = 0.0;
 
-    dbg!(constraints);
-
     // Children start at the parent's position
     let mut child_cursor_x = cursor_x;
     let mut child_cursor_y = cursor_y;

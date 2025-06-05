@@ -20,15 +20,6 @@ fn main() {
             }))
     }));
 
-    // let root = div()
-    //     .col()
-    //     .h(px(800.))
-    //     .w(px(800.))
-    //     .bg(Color::WHITE)
-    //     .child(div().h(px(100.)).w(px(100.)).bg(Color::BLUE))
-    //     .child(div().h(px(100.)).w(px(100.)).bg(Color::RED))
-    //     .children((0..8).map(|x| div().h(px(100.)).w(px(100.)).bg(Color::BLUE)));
-
     let app = App::new(root);
 
     app.run();

@@ -1,42 +1,70 @@
-use glam::Vec4;
-
-use super::color::ColorRGBA;
+use super::color::Color;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Length {
-    Percent(f32),
-    Scale(f32),
+    // Percent(f32),
     Px(f32),
+    Auto,
 }
 
-pub struct Length2 {
-    pub x: Length,
-    pub y: Length,
+pub fn px(value: f32) -> Length {
+    Length::Px(value)
+}
+
+// pub fn percent(value: f32) -> Length {
+//     Length::Percent(value)
+// }
+
+impl Default for Length {
+    fn default() -> Self {
+        Length::Auto
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Copy)]
+pub enum Direction {
+    Column,
+    Row,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EdgeSizes {
+    pub top: Length,
+    pub right: Length,
+    pub bottom: Length,
+    pub left: Length,
 }
 
 #[derive(Clone, Debug)]
 pub struct Style {
-    pub margin: Vec4,
-    pub padding: Vec4,
-    pub bg_color: ColorRGBA,
-}
+    pub margin: EdgeSizes,
+    pub padding: EdgeSizes,
+    // pub border: EdgeSizes,
+    pub bg_color: Color,
 
-impl Style {
-    pub fn from_bg_color(bg_color: ColorRGBA) -> Self {
-        Self {
-            margin: Vec4::splat(0.0),
-            padding: Vec4::splat(0.0),
-            bg_color,
-        }
-    }
+    // TODO: min and max width/height
+    pub width: Length,
+    pub height: Length,
+
+    // layout
+    // TODO: align, justify
+    pub direction: Direction,
+    pub wrap: bool,
+    pub reverse: bool, // render children in reverse order
 }
 
 impl Default for Style {
     fn default() -> Self {
         Self {
-            margin: Vec4::splat(0.0),
-            padding: Vec4::splat(0.0),
-            bg_color: ColorRGBA::TRANSPARENT,
+            margin: EdgeSizes::default(),
+            padding: EdgeSizes::default(),
+            // border: EdgeSizes::default(),
+            width: Length::Auto,
+            height: Length::Auto,
+            direction: Direction::Column,
+            bg_color: Color::TRANSPARENT,
+            wrap: false,
+            reverse: false,
         }
     }
 }

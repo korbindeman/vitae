@@ -1,14 +1,33 @@
 mod utils;
 
 use utils::checkerboard;
-use vitae::{App, immediate_ui::elements::div::div};
+use vitae::{
+    App,
+    immediate_ui::{color::Color, elements::div::div, style::px},
+};
 
 fn main() {
-    let root = div().col().children((0..8).map(|x| {
+    let root = div().bg(Color::BLUE).col().children((0..8).map(|x| {
         div()
-            .height(100. / 8.)
-            .children((0..8).map(|y| div().background(checkerboard(x, y)).width(100. / 8.)))
+            .row()
+            .h(px(1200. / 8.))
+            .w(px(1200.))
+            .children((0..8).map(|y| {
+                div()
+                    .bg(checkerboard(x, y))
+                    .w(px(1200. / 8.))
+                    .h(px(1200. / 8.))
+            }))
     }));
+
+    // let root = div()
+    //     .col()
+    //     .h(px(800.))
+    //     .w(px(800.))
+    //     .bg(Color::WHITE)
+    //     .child(div().h(px(100.)).w(px(100.)).bg(Color::BLUE))
+    //     .child(div().h(px(100.)).w(px(100.)).bg(Color::RED))
+    //     .children((0..8).map(|x| div().h(px(100.)).w(px(100.)).bg(Color::BLUE)));
 
     let app = App::new(root);
 

@@ -1,130 +1,98 @@
-use std::{cell::RefCell, rc::Rc};
-
-use glam::Vec2;
-
 use super::{
-    color::ColorRGBA,
-    element::{Direction, Element, ElementHandle, Size},
-    style::Style,
+    color::Color,
+    element::ElementTree,
+    style::{Direction, Length, Style},
 };
 
-/// Simple, non-typestate builder.
-/// Call setters in any order; last one wins if you repeat.
+// TODO: use typestate to disallow invalid combinations
 #[derive(Clone, Debug)]
 pub struct ElementBuilder {
-    // author-time intent
-    anchor: Vec2,
     style: Style,
-    direction: Direction,
-    width_pct: Option<f32>,
-    height_pct: Option<f32>,
-    aspect: Option<f32>,
     children: Vec<ElementBuilder>,
 }
 
 impl ElementBuilder {
-    /// Entry point – defaults to Column, transparent background, full size.
     pub fn new() -> Self {
         Self {
-            anchor: Vec2::ZERO,
             style: Style::default(),
-            direction: Direction::Row,
-            width_pct: None,
-            height_pct: None,
-            aspect: None,
             children: Vec::new(),
         }
     }
 
-    /* ----- chainable setters (no exclusivity enforced) ------------------ */
-    pub fn anchor(mut self, xy: Vec2) -> Self {
-        self.anchor = xy;
-        self
-    }
+    /// Make the element render children in a row.
     pub fn row(mut self) -> Self {
-        self.direction = Direction::Row;
+        self.style.direction = Direction::Row;
         self
     }
-    pub fn col(mut self) -> Self {
-        self.direction = Direction::Column;
-        self
-    }
-    // pub fn direction(mut self, dir: Direction) -> Self {
-    //     self.direction = dir;
-    //     self
-    // }
 
-    pub fn background(mut self, c: ColorRGBA) -> Self {
+    /// Make the element render children in a column.
+    pub fn col(mut self) -> Self {
+        self.style.direction = Direction::Column;
+        self
+    }
+
+    /// Make the element render children in a direction.
+    pub fn direction(mut self, dir: Direction) -> Self {
+        self.style.direction = dir;
+        self
+    }
+
+    /// The background color of the element.
+    pub fn bg(mut self, c: Color) -> Self {
         self.style.bg_color = c;
         self
     }
 
-    pub fn width(mut self, pct: f32) -> Self {
-        self.width_pct = Some(pct);
-        self
-    }
-    pub fn height(mut self, pct: f32) -> Self {
-        self.height_pct = Some(pct);
-        self
-    }
-    pub fn aspect_ratio(mut self, r: f32) -> Self {
-        self.aspect = Some(r);
+    /// The width of the element.
+    pub fn w(mut self, length: Length) -> Self {
+        self.style.width = length;
         self
     }
 
+    /// The height of the element.
+    pub fn h(mut self, length: Length) -> Self {
+        self.style.height = length;
+        self
+    }
+    // pub fn aspect_ratio(mut self, ratio: f32) -> Self {
+    //     todo!()
+    // }
+
+    /// Add a child to the element.
     pub fn child(mut self, child: ElementBuilder) -> Self {
         self.children.push(child);
         self
     }
 
+    /// Add a children to the element.
     pub fn children<I>(mut self, new_children: I) -> Self
     where
-        I: Iterator<Item = ElementBuilder>,
+        I: IntoIterator<Item = ElementBuilder>,
     {
-        self.children
-            .append(&mut new_children.collect::<Vec<ElementBuilder>>());
+        let iter = new_children.into_iter();
+
+        // if the iterator can tell us its exact length, pre-reserve
+        if let (_, Some(len)) = iter.size_hint() {
+            self.children.reserve(len);
+        }
+
+        self.children.extend(iter);
         self
     }
 
-    /* ----- finish ------------------------------------------------------- */
-    pub fn build(self) -> ElementHandle {
-        // Choose a Size – very simple rules:
-        // 1) if both width & height set → Size::percent(w, h)
-        // 2) else if aspect set → width = 100 %, height derived from ratio
-        // 3) else if only one dim set → other = 100 %
-        // 4) else full (100 %, 100 %)
-        let size = match (self.width_pct, self.height_pct, self.aspect) {
-            (Some(w), Some(h), _)      => Size::percent(w, h),
-            (None,   None,   Some(r))  => Size::percent(100.0, 100.0 / r),
-            (Some(w), None,   _)       => Size::percent(w, /*  auto  */ 100.0),
-            (None,   Some(h), _)       => Size::percent(100.0, h),
-            _ /* nothing set */        => Size::percent(100.0, 100.0),   // height auto
-        };
+    pub fn build(self) -> ElementTree {
+        let mut tree = ElementTree::new(self.style.clone()); // root node
+        let mut stack = vec![(tree.root, self.children)]; // DFS
 
-        // Create the inner Element and wrap in ElementHandle
-        let elem = Rc::new(RefCell::new(Element {
-            parent: None,
-            children: RefCell::new(Vec::new()),
-            anchor: self.anchor,
-            size,
-            style: self.style,
-            direction: self.direction,
-        }));
-
-        let handle = ElementHandle(elem.clone());
-
-        // Build and add all children
-        for child_builder in self.children {
-            let child_handle = child_builder.build();
-            // Set parent reference in child
-            child_handle.0.borrow_mut().parent = Some(Rc::downgrade(&elem));
-            // Add child to parent's children list
-            elem.borrow_mut()
-                .children
-                .borrow_mut()
-                .push(child_handle.0.clone());
+        while let Some((parent_id, mut raw_children)) = stack.pop() {
+            // iterate in reverse to preserve source order when we push_front
+            for child_builder in raw_children.drain(..).rev() {
+                let id = tree.add_child(parent_id, child_builder.style.clone());
+                if !child_builder.children.is_empty() {
+                    stack.push((id, child_builder.children));
+                }
+            }
         }
-
-        handle
+        tree
     }
 }

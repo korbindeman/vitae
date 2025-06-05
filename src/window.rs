@@ -44,6 +44,12 @@ impl<'a> ApplicationHandler for StateApplication<'a> {
                 WindowEvent::Resized(physical_size) => {
                     self.state.as_mut().unwrap().resize(physical_size);
                 }
+                WindowEvent::ScaleFactorChanged {
+                    scale_factor,
+                    inner_size_writer,
+                } => {
+                    self.state.as_mut().unwrap().scale_factor(scale_factor);
+                }
                 WindowEvent::RedrawRequested => {
                     self.state.as_mut().unwrap().render().unwrap();
                 }

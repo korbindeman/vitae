@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use glam::Vec2;
 use pollster::FutureExt;
 use wgpu::util::DeviceExt;
 use wgpu::{Adapter, Device, Instance, PresentMode, Queue, Surface, SurfaceCapabilities};
@@ -8,7 +7,10 @@ use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
 use crate::immediate_ui::builder::ElementBuilder;
-use crate::immediate_ui::element::tree_to_draw_commands;
+use crate::immediate_ui::color::Color;
+use crate::immediate_ui::draw::{DrawCommand, push_draw_commands};
+use crate::immediate_ui::element::layout;
+use crate::immediate_ui::layout::{self, Constraints};
 
 use super::vertex::{Vertex, build_mesh};
 
@@ -19,7 +21,10 @@ pub struct State<'a> {
     config: wgpu::SurfaceConfiguration,
 
     size: PhysicalSize<u32>,
+    scale_factor: f64,
     window: Arc<Window>,
+
+    root_element: ElementBuilder,
 
     render_pipeline: wgpu::RenderPipeline,
 
@@ -88,9 +93,26 @@ impl<'a> State<'a> {
             cache: None,
         });
 
-        let cmds = tree_to_draw_commands(
-            root_element,
-            Vec2::new(size.width as f32, size.height as f32),
+        let mut tree = root_element.clone().build();
+        let root = tree.root;
+        layout(
+            &mut tree,
+            root,
+            Constraints {
+                max_h: size.height as f32,
+                max_w: size.width as f32,
+            },
+            0.0,
+            0.0,
+        );
+        let mut cmds = Vec::new();
+
+        push_draw_commands(
+            &tree,
+            tree.root,
+            &mut cmds,
+            size.width as f32,
+            size.height as f32,
         );
 
         let (vertices, indices) = build_mesh(cmds.as_slice());
@@ -115,10 +137,12 @@ impl<'a> State<'a> {
             config,
             size,
             window: window_arc,
+            scale_factor: 1.0,
             render_pipeline,
             vertex_buffer,
             index_buffer,
             num_indices,
+            root_element,
         }
     }
 
@@ -184,7 +208,24 @@ impl<'a> State<'a> {
 
         self.surface.configure(&self.device, &self.config);
 
+        let mut tree = self.root_element.clone().build();
+        let root = tree.root;
+        layout(
+            &mut tree,
+            root,
+            Constraints {
+                max_h: self.size.height as f32,
+                max_w: self.size.width as f32,
+            },
+            0.0,
+            0.0,
+        );
+
         println!("Resized to {:?} from state!", new_size);
+    }
+
+    pub fn scale_factor(&mut self, scale_factor: f64) {
+        self.scale_factor = scale_factor;
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {

@@ -1,8 +1,8 @@
-pub mod immediate_ui;
+pub mod core;
 mod renderer_wgpu;
 mod window;
 
-use immediate_ui::builder::ElementBuilder;
+use core::builder::ElementBuilder;
 use window::StateApplication;
 use winit::event_loop::EventLoop;
 

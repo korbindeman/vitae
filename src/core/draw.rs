@@ -1,4 +1,4 @@
-use crate::immediate_ui::element::{ElementId, ElementTree};
+use crate::core::element::{ElementId, ElementTree};
 
 pub enum DrawCommand {
     Rect {
@@ -21,13 +21,13 @@ pub fn push_draw_commands(
     let node = tree.get_node(id);
     let layout = node.layout;
 
-    // 1. convert to NDC
+    // convert to NDC
     let ndc_x = -1.0 + 2.0 * (layout.x / viewport_w);
     let ndc_y = 1.0 - 2.0 * ((layout.y + layout.height) / viewport_h);
     let ndc_width = 2.0 * (layout.width / viewport_w);
     let ndc_height = 2.0 * (layout.height / viewport_h);
 
-    // 2. emit a command (use padding / border if you add them later)
+    // emit a command (use padding / border if you add them later)
     cmds.push(DrawCommand::Rect {
         x: ndc_x,
         y: ndc_y,
@@ -36,7 +36,7 @@ pub fn push_draw_commands(
         color: node.style.bg_color.to_array(),
     });
 
-    // 3. recurse over children
+    // recurse over children
     let mut child = node.first_child;
     while let Some(id) = child {
         push_draw_commands(tree, id, cmds, viewport_w, viewport_h);

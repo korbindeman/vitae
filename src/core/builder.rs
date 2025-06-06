@@ -1,4 +1,4 @@
-use crate::immediate_ui::style::EdgeSizes;
+use crate::core::style::EdgeSizes;
 
 use super::{
     color::Color,

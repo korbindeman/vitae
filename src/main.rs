@@ -3,7 +3,7 @@ mod utils;
 use utils::checkerboard;
 use vitae::{
     App,
-    immediate_ui::{color::Color, elements::div::div, style::px},
+    core::{color::Color, elements::div::div, style::px},
 };
 
 fn main() {

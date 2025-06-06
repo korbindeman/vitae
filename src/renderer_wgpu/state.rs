@@ -6,10 +6,9 @@ use wgpu::{Adapter, Device, Instance, PresentMode, Queue, Surface, SurfaceCapabi
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
-use crate::immediate_ui::builder::ElementBuilder;
-use crate::immediate_ui::draw::push_draw_commands;
-use crate::immediate_ui::element::layout;
-use crate::immediate_ui::layout::Constraints;
+use crate::core::builder::ElementBuilder;
+use crate::core::draw::push_draw_commands;
+use crate::core::layout::{Constraints, layout};
 
 use super::vertex::{Vertex, build_mesh};
 

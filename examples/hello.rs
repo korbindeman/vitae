@@ -1,6 +1,6 @@
 use vitae::{
     App,
-    immediate_ui::{
+    core::{
         color::Color,
         elements::div::div,
         style::{pc, px},

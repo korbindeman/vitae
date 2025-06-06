@@ -1,4 +1,4 @@
-use vitae::immediate_ui::color::Color;
+use vitae::core::color::Color;
 
 pub fn checkerboard(x: i32, y: i32) -> Color {
     let light_square = Color::rgb(0.95, 0.9, 0.9);

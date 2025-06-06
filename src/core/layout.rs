@@ -1,93 +1,22 @@
-use generational_arena::{Arena, Index};
+use crate::core::{
+    element::{ElementId, ElementTree},
+    style::{Direction, Length},
+};
 
-use crate::immediate_ui::layout::Constraints;
-use crate::immediate_ui::style::{Direction, Length};
-
-use super::layout::Layout;
-use super::style::Style;
-
-pub type ElementId = Index;
-
-#[derive(Debug)]
-pub struct Element {
-    // tree topology
-    pub parent: Option<ElementId>,
-    pub first_child: Option<ElementId>,
-    pub next_sibling: Option<ElementId>,
-
-    // data
-    pub style: Style,   // immutable except through API
-    pub layout: Layout, // mutated by layout pass
-    pub dirty: bool,    // marks subtree needing re-layout
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Layout {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
 }
 
-impl Element {
-    fn new(style: Style, parent: Option<ElementId>) -> Self {
-        Self {
-            parent,
-            first_child: None,
-            next_sibling: None,
-            style,
-            layout: Layout::default(),
-            dirty: true,
-        }
-    }
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Constraints {
+    pub max_w: f32, // may be f32::INFINITY
+    pub max_h: f32,
 }
 
-pub struct ElementTree {
-    arena: Arena<Element>,
-    pub root: ElementId,
-}
-
-impl ElementTree {
-    pub fn new(style: Style) -> Self {
-        let mut arena = Arena::new();
-        let root = arena.insert(Element::new(style, None));
-        Self { arena, root }
-    }
-
-    pub fn add_child(&mut self, parent: ElementId, style: Style) -> ElementId {
-        let child_id = self.arena.insert(Element::new(style, Some(parent)));
-
-        // intrusive linked list: prepend
-        if let Some(first) = self.arena[parent].first_child.replace(child_id) {
-            self.arena[child_id].next_sibling = Some(first);
-        }
-        child_id
-    }
-
-    pub fn remove_subtree(&mut self, id: ElementId) {
-        // depth-first delete children first
-        while let Some(child) = self.arena[id].first_child {
-            self.remove_subtree(child);
-        }
-        self.arena.remove(id);
-    }
-
-    pub fn children<'a>(&'a self, id: ElementId) -> impl Iterator<Item = ElementId> + 'a {
-        std::iter::successors(self.arena[id].first_child, move |cur| {
-            self.arena[*cur].next_sibling
-        })
-    }
-
-    fn _mark_dirty(&mut self, id: ElementId) {
-        let mut cur = Some(id);
-        while let Some(node) = cur {
-            if !self.arena[node].dirty {
-                self.arena[node].dirty = true;
-                cur = self.arena[node].parent; // bubble up
-            } else {
-                break;
-            } // ancestor already dirty
-        }
-    }
-
-    pub fn get_node(&self, id: ElementId) -> &Element {
-        &self.arena[id]
-    }
-}
-
-// TODO: this should be somewhere else
 pub fn layout(
     tree: &mut ElementTree,
     id: ElementId,
@@ -168,7 +97,7 @@ pub fn layout(
         }
     }
 
-    // i my own size was Auto, grow to fit children plus padding
+    // if my own size was Auto, grow to fit children plus padding
     match dir {
         Direction::Row => {
             if w == 0.0 {

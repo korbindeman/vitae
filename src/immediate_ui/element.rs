@@ -95,11 +95,11 @@ pub fn layout(
     cursor_x: f32,
     cursor_y: f32,
 ) -> (f32, f32) {
-    // Get style and direction first before any mutable borrows
+    // get style and direction first before any mutable borrows
     let style = { &tree.arena[id].style };
     let dir = style.direction;
 
-    // Extract margin and padding values
+    // extract margin and padding values
     let margin_left = style.margin.left.as_px();
     let margin_right = style.margin.right.as_px();
     let margin_top = style.margin.top.as_px();
@@ -110,35 +110,39 @@ pub fn layout(
     let padding_top = style.padding.top.as_px();
     let padding_bottom = style.padding.bottom.as_px();
 
-    // 1. Resolve my own size (Px takes value, Auto = shrink-to-fit)
-    let (mut w, mut h) = match (style.width, style.height) {
-        (Length::Px(px), Length::Px(py)) => (px, py),
-        (Length::Px(px), Length::Auto) => (px, 0.0),
-        (Length::Auto, Length::Px(py)) => (0.0, py),
-        _ => (0.0, 0.0), // both Auto for now
+    let mut w = match style.width {
+        Length::Px(px) => px,
+        Length::Auto => 0.,
+        Length::Percent(percent) => percent / 100.0 * constraints.max_w,
     };
 
-    // 2. Visit children, stacking them Row- or Column-wise
+    let mut h = match style.height {
+        Length::Px(py) => py,
+        Length::Auto => 0.,
+        Length::Percent(percent) => percent / 100.0 * constraints.max_h,
+    };
+
+    // visit children, stacking them Row- or Column-wise
     let mut max_cross: f32 = 0.0;
     let mut main_total: f32 = 0.0;
 
-    // Children start at the parent's position plus margin and padding
+    // children start at the parent's position plus margin and padding
     let mut child_cursor_x = cursor_x + margin_left + padding_left;
     let mut child_cursor_y = cursor_y + margin_top + padding_top;
 
-    // Collect children first to avoid borrowing issues
+    // collect children first to avoid borrowing issues
     let children: Vec<ElementId> = tree.children(id).collect();
     for child in children {
         // child always gets *all* the remaining room on the cross axis, minus padding
         let child_constraints = if dir == Direction::Row {
             Constraints {
-                max_w: constraints.max_w - padding_left - padding_right,
-                max_h: constraints.max_h - padding_top - padding_bottom,
+                max_w: w - padding_left - padding_right,
+                max_h: h - padding_top - padding_bottom,
             }
         } else {
             Constraints {
-                max_w: constraints.max_w - padding_left - padding_right,
-                max_h: constraints.max_h - padding_top - padding_bottom,
+                max_w: w - padding_left - padding_right,
+                max_h: h - padding_top - padding_bottom,
             }
         };
 
@@ -164,7 +168,7 @@ pub fn layout(
         }
     }
 
-    // 3. If my own size was Auto, grow to fit children plus padding
+    // i my own size was Auto, grow to fit children plus padding
     match dir {
         Direction::Row => {
             if w == 0.0 {
@@ -184,7 +188,7 @@ pub fn layout(
         }
     }
 
-    // Add margin to the final size
+    // add margin to the final size
     let final_w = w + margin_left + margin_right;
     let final_h = h + margin_top + margin_bottom;
 

@@ -2,7 +2,7 @@ use super::color::Color;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Length {
-    // Percent(f32),
+    Percent(f32),
     Px(f32),
     Auto,
 }
@@ -16,13 +16,15 @@ impl Length {
     }
 }
 
+/// Create a length in pixels.
 pub fn px(value: f32) -> Length {
     Length::Px(value)
 }
 
-// pub fn percent(value: f32) -> Length {
-//     Length::Percent(value)
-// }
+/// Create a length in percentage.
+pub fn pc(value: f32) -> Length {
+    Length::Percent(value)
+}
 
 impl Default for Length {
     fn default() -> Self {

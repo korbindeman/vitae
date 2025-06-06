@@ -45,17 +45,25 @@ impl ElementBuilder {
         self
     }
 
-    /// The width of the element.
+    /// Set the width of the element.
     pub fn w(mut self, length: Length) -> Self {
         self.style.width = length;
         self
     }
 
-    /// The height of the element.
+    /// Set the height of the element.
     pub fn h(mut self, length: Length) -> Self {
         self.style.height = length;
         self
     }
+
+    /// Set the width and height of the element simultaneously.
+    pub fn size(mut self, size: Length) -> Self {
+        self.style.width = size;
+        self.style.height = size;
+        self
+    }
+
     // pub fn aspect_ratio(mut self, ratio: f32) -> Self {
     //     todo!()
     // }

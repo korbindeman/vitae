@@ -64,9 +64,11 @@ impl ElementBuilder {
         self
     }
 
-    // pub fn aspect_ratio(mut self, ratio: f32) -> Self {
-    //     todo!()
-    // }
+    /// Set the aspect ratio of the element. Only supply one dimension's length.
+    pub fn aspect_ratio(mut self, ratio: f32) -> Self {
+        self.style.aspect_ratio = Some(ratio);
+        self
+    }
 
     pub fn p(mut self, size: Length) -> Self {
         self.style.padding = EdgeSizes::splat(size);

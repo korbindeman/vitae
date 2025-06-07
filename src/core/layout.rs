@@ -51,6 +51,18 @@ pub fn layout(
         Length::Percent(percent) => percent / 100.0 * constraints.max_h,
     };
 
+    match style.aspect_ratio {
+        // TODO: this might fail if auto length logic changes
+        Some(ratio) => {
+            if w == 0.0 {
+                w = h * ratio;
+            } else if h == 0.0 {
+                h = w / ratio;
+            }
+        }
+        None => {}
+    };
+
     // visit children, stacking them Row- or Column-wise
     let mut max_cross: f32 = 0.0;
     let mut main_total: f32 = 0.0;

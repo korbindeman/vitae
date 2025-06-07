@@ -3,26 +3,20 @@ mod utils;
 use utils::checkerboard;
 use vitae::{
     App,
-    core::{color::Color, elements::div::div, style::px},
+    core::{elements::div::div, style::pc},
 };
 
 fn main() {
-    let root = div()
-        .bg(Color::BLUE)
-        .p(px(10.))
-        .col()
-        .children((0..8).map(|x| {
-            div()
-                .row()
-                .h(px(1180. / 8.))
-                .w(px(1180.))
-                .children((0..8).map(|y| {
-                    div()
-                        .bg(checkerboard(x, y))
-                        .w(px(1180. / 8.))
-                        .h(px(1180. / 8.))
-                }))
-        }));
+    let root =
+        div()
+            .h(pc(100.))
+            .aspect_ratio(1.0)
+            .col()
+            .children((0..8).map(|x| {
+                div().row().h(pc(100. / 8.)).w(pc(100.)).children(
+                    (0..8).map(|y| div().bg(checkerboard(x, y)).w(pc(100. / 8.)).h(pc(100.))),
+                )
+            }));
 
     let app = App::new(root);
 

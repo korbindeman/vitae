@@ -76,6 +76,7 @@ pub struct Style {
     // TODO: min and max width/height
     pub width: Length,
     pub height: Length,
+    pub aspect_ratio: Option<f32>,
 
     // layout
     // TODO: align, justify
@@ -92,6 +93,7 @@ impl Default for Style {
             // border: EdgeSizes::default(),
             width: Length::Auto,
             height: Length::Auto,
+            aspect_ratio: None,
             direction: Direction::Column,
             bg_color: Color::TRANSPARENT,
             wrap: false,

@@ -17,7 +17,7 @@ pub struct Constraints {
     pub max_h: f32,
 }
 
-pub fn layout(
+pub(crate) fn layout(
     tree: &mut ElementTree,
     id: ElementId,
     constraints: Constraints,

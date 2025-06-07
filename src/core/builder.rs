@@ -40,8 +40,8 @@ impl ElementBuilder {
     }
 
     /// The background color of the element.
-    pub fn bg(mut self, c: Color) -> Self {
-        self.style.bg_color = c;
+    pub fn bg(mut self, color: Color) -> Self {
+        self.style.bg_color = color;
         self
     }
 
@@ -67,6 +67,13 @@ impl ElementBuilder {
     /// Set the aspect ratio of the element. Only supply one dimension's length.
     pub fn aspect_ratio(mut self, ratio: f32) -> Self {
         self.style.aspect_ratio = Some(ratio);
+        self
+    }
+
+    /// Set the aspect ratio of the element to a square (1:1).
+    // TODO: might be redundant
+    pub fn square(mut self) -> Self {
+        self.style.aspect_ratio = Some(1.0);
         self
     }
 

@@ -1,4 +1,5 @@
 pub mod core;
+pub mod prelude;
 mod renderer_wgpu;
 mod window;
 

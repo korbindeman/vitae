@@ -1,13 +1,10 @@
 mod utils;
 
 use utils::checkerboard;
-use vitae::{
-    App,
-    core::{elements::div::div, style::pc},
-};
+use vitae::prelude::*;
 
 fn main() {
-    let root =
+    let chessboard =
         div()
             .h(pc(100.))
             .aspect_ratio(1.0)
@@ -17,6 +14,17 @@ fn main() {
                     (0..8).map(|y| div().bg(checkerboard(x, y)).w(pc(100. / 8.)).h(pc(100.))),
                 )
             }));
+
+    let side_panel = div()
+        .size(pc(100.))
+        .bg(Color::GRAY)
+        .child(div().bg(Color::BLUE).size(px(100.)));
+
+    let root = div()
+        .size(pc(100.))
+        .row()
+        .child(chessboard)
+        .child(side_panel);
 
     let app = App::new(root);
 

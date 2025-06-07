@@ -4,27 +4,20 @@ use utils::checkerboard;
 use vitae::prelude::*;
 
 fn main() {
-    let chessboard =
+    let chessboard = div().h(FULL).square().col().children((0..8).map(|x| {
         div()
-            .h(pc(100.))
-            .aspect_ratio(1.0)
-            .col()
-            .children((0..8).map(|x| {
-                div().row().h(pc(100. / 8.)).w(pc(100.)).children(
-                    (0..8).map(|y| div().bg(checkerboard(x, y)).w(pc(100. / 8.)).h(pc(100.))),
-                )
-            }));
+            .row()
+            .h(pc(100. / 8.))
+            .w(FULL)
+            .children((0..8).map(|y| div().bg(checkerboard(x, y)).w(pc(100. / 8.)).h(FULL)))
+    }));
 
     let side_panel = div()
-        .size(pc(100.))
-        .bg(Color::GRAY)
-        .child(div().bg(Color::BLUE).size(px(100.)));
+        .size(FULL)
+        .bg(GRAY)
+        .child(div().bg(BLUE).size(px(100.)));
 
-    let root = div()
-        .size(pc(100.))
-        .row()
-        .child(chessboard)
-        .child(side_panel);
+    let root = div().size(FULL).row().child(chessboard).child(side_panel);
 
     let app = App::new(root);
 

@@ -1,8 +1,8 @@
 use vitae::core::color::Color;
 
 pub fn checkerboard(x: i32, y: i32) -> Color {
-    let light_square = Color::rgb(0.95, 0.9, 0.9);
-    let dark_square = Color::rgb(0.64, 0.32, 0.3);
+    let light_square = Color::rgb(242, 229, 229);
+    let dark_square = Color::rgb(163, 82, 76);
 
     // bitwise sum‐parity pick, tbh idk how this really works
     if ((x + y) & 1) == 0 {

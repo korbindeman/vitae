@@ -8,8 +8,13 @@ impl Color {
         Color(Vec4::new(r, g, b, a))
     }
 
-    pub fn rgb(r: f32, g: f32, b: f32) -> Self {
-        Color(Vec4::new(r, g, b, 1.0))
+    pub fn rgb(r: u8, g: u8, b: u8) -> Self {
+        Color(Vec4::new(
+            r as f32 / 255.,
+            g as f32 / 255.,
+            b as f32 / 255.,
+            1.0,
+        ))
     }
 
     pub fn to_array(&self) -> [f32; 4] {

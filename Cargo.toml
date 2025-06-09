@@ -12,3 +12,4 @@ winit = "0.30"
 bytemuck = { version = "1.23", features = ["derive"] }
 glam = "0.30.3"
 generational-arena = "0.2"
+glyphon = "0.9.0"

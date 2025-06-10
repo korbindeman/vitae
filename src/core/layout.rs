@@ -1,5 +1,5 @@
 use crate::core::{
-    element::{ElementId, ElementTree},
+    element::{ElementTree, NodeId},
     style::{Direction, Length},
 };
 
@@ -19,13 +19,13 @@ pub struct Constraints {
 
 pub(crate) fn layout(
     tree: &mut ElementTree,
-    id: ElementId,
+    id: NodeId,
     constraints: Constraints,
     cursor_x: f32,
     cursor_y: f32,
 ) -> (f32, f32) {
     // get style and direction first before any mutable borrows
-    let style = { &tree.arena[id].style };
+    let style = { &tree.arena[id].style().unwrap() };
     let dir = style.direction;
 
     // extract margin and padding values
@@ -72,7 +72,7 @@ pub(crate) fn layout(
     let mut child_cursor_y = cursor_y + margin_top + padding_top;
 
     // collect children first to avoid borrowing issues
-    let children: Vec<ElementId> = tree.children(id).collect();
+    let children: Vec<NodeId> = tree.children(id).collect();
     for child in children {
         // child always gets *all* the remaining room on the cross axis, minus padding
         let child_constraints = if dir == Direction::Row {

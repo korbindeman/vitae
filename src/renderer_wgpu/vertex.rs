@@ -56,6 +56,7 @@ pub fn build_mesh(commands: &[DrawCommand]) -> (Vec<Vertex>, Vec<u16>) {
                 // two triangles: (0,1,2) and (2,3,0)
                 indices.extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
             }
+            _ => {}
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::core::element::{ElementId, ElementTree};
+use crate::core::element::{ElementTree, NodeId, NodeKind};
 
 pub enum DrawCommand {
     Rect {
@@ -8,12 +8,19 @@ pub enum DrawCommand {
         height: f32,
         color: [f32; 4],
     },
-    // … later: Glyph { atlas_uv: […], x,y,w,h, color }
+    Text {
+        content: String,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        color: [f32; 4],
+    },
 }
 
 pub fn push_draw_commands(
     tree: &ElementTree,
-    id: ElementId,
+    id: NodeId,
     cmds: &mut Vec<DrawCommand>,
     viewport_w: f32,
     viewport_h: f32,
@@ -27,14 +34,27 @@ pub fn push_draw_commands(
     let ndc_width = 2.0 * (layout.width / viewport_w);
     let ndc_height = 2.0 * (layout.height / viewport_h);
 
-    // emit a command (use padding / border if you add them later)
-    cmds.push(DrawCommand::Rect {
-        x: ndc_x,
-        y: ndc_y,
-        width: ndc_width,
-        height: ndc_height,
-        color: node.style.bg_color.to_array(),
-    });
+    match &node.kind {
+        NodeKind::Text { content } => {
+            cmds.push(DrawCommand::Text {
+                content: content.clone(),
+                x: ndc_x,
+                y: ndc_y,
+                width: ndc_width,
+                height: ndc_height,
+                color: [0.0, 0.0, 0.0, 1.0],
+            });
+        }
+        NodeKind::Element { style } => {
+            cmds.push(DrawCommand::Rect {
+                x: ndc_x,
+                y: ndc_y,
+                width: ndc_width,
+                height: ndc_height,
+                color: style.bg_color.to_array(),
+            });
+        }
+    }
 
     // recurse over children
     let mut child = node.first_child;

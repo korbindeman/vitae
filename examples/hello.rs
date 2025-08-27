@@ -1,7 +1,7 @@
 use vitae::prelude::*;
 
 pub fn main() {
-    let root = div().size(FULL).p(SM).child(text("Hello, Vitae!"));
+    let root = div().size(FULL).bg(RED).child(div().size(px(400.)));
 
     let app = App::new(root);
 

@@ -35,7 +35,7 @@ pub fn push_draw_commands(
     let ndc_height = 2.0 * (layout.height / viewport_h);
 
     match &node.kind {
-        NodeKind::Text { content } => {
+        NodeKind::Text { content, style } => {
             cmds.push(DrawCommand::Text {
                 content: content.clone(),
                 x: ndc_x,

@@ -72,6 +72,7 @@ pub struct Style {
     pub padding: EdgeSizes,
     // pub border: EdgeSizes,
     pub bg_color: Color,
+    pub text_color: Color,
 
     // TODO: min and max width/height
     pub width: Length,
@@ -96,6 +97,7 @@ impl Default for Style {
             aspect_ratio: None,
             direction: Direction::Column,
             bg_color: Color::TRANSPARENT,
+            text_color: Color::BLACK,
             wrap: false,
             reverse: false,
         }

@@ -1,5 +1,5 @@
 use crate::core::builder::ElementBuilder;
 
-pub fn text(_content: &str) -> ElementBuilder {
-    ElementBuilder::new()
+pub fn text(content: impl Into<String>) -> ElementBuilder {
+    ElementBuilder::new_text(content.into())
 }

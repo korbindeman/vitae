@@ -15,7 +15,9 @@ fn main() {
     let side_panel = div()
         .size(FULL)
         .bg(GRAY)
-        .child(div().bg(BLUE).size(px(100.)));
+        .p(px(12.0))
+        .child(div().bg(BLUE).size(px(100.)))
+        .child(text("Hello world"));
 
     let root = div().size(FULL).row().child(chessboard).child(side_panel);
 

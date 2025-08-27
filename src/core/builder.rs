@@ -1,4 +1,4 @@
-use crate::core::style::EdgeSizes;
+use crate::core::{element::NodeKind, style::EdgeSizes};
 
 use super::{
     color::Color,
@@ -6,17 +6,37 @@ use super::{
     style::{Direction, Length, Style},
 };
 
+// TODO: this should be unified with NodeKind
+#[derive(Clone, Debug)]
+enum ElementKind {
+    Element,
+    Text,
+}
+
 // TODO: use typestate to disallow invalid combinations
 #[derive(Clone, Debug)]
 pub struct ElementBuilder {
+    node_type: ElementKind,
     style: Style,
+    text: Option<String>,
     children: Vec<ElementBuilder>,
 }
 
 impl ElementBuilder {
     pub fn new() -> Self {
         Self {
+            node_type: ElementKind::Element,
             style: Style::default(),
+            text: None,
+            children: Vec::new(),
+        }
+    }
+
+    pub fn new_text(text: String) -> Self {
+        Self {
+            node_type: ElementKind::Text,
+            style: Style::default(),
+            text: Some(text),
             children: Vec::new(),
         }
     }
@@ -115,7 +135,17 @@ impl ElementBuilder {
         while let Some((parent_id, mut raw_children)) = stack.pop() {
             // iterate in reverse to preserve source order when we push_front
             for child_builder in raw_children.drain(..).rev() {
-                let id = tree.add_child(parent_id, child_builder.style.clone());
+                let node_kind = match child_builder.node_type {
+                    ElementKind::Element => NodeKind::Element {
+                        style: child_builder.style,
+                    },
+                    ElementKind::Text => NodeKind::Text {
+                        content: child_builder.text.unwrap(),
+                        style: child_builder.style,
+                    },
+                };
+
+                let id = tree.add_child(parent_id, node_kind);
                 if !child_builder.children.is_empty() {
                     stack.push((id, child_builder.children));
                 }

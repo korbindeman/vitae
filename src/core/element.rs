@@ -8,7 +8,7 @@ pub type NodeId = Index;
 #[derive(Debug)]
 pub enum NodeKind {
     Element { style: Style },
-    Text { content: String },
+    Text { content: String, style: Style },
 }
 
 #[derive(Debug)]
@@ -36,12 +36,12 @@ impl Node {
         }
     }
 
-    fn new_text(content: String, parent: Option<NodeId>) -> Self {
+    fn new_text(content: String, style: Style, parent: Option<NodeId>) -> Self {
         Self {
             parent,
             first_child: None,
             next_sibling: None,
-            kind: NodeKind::Text { content },
+            kind: NodeKind::Text { content, style },
             layout: Layout::default(),
             dirty: true,
         }
@@ -50,7 +50,7 @@ impl Node {
     pub fn style(&self) -> Option<&Style> {
         match &self.kind {
             NodeKind::Element { style } => Some(style),
-            _ => None,
+            NodeKind::Text { content, style } => Some(style),
         }
     }
 }
@@ -67,8 +67,16 @@ impl ElementTree {
         Self { arena, root }
     }
 
-    pub fn add_child(&mut self, parent: NodeId, style: Style) -> NodeId {
-        let child_id = self.arena.insert(Node::new_element(style, Some(parent)));
+    pub fn add_child(&mut self, parent: NodeId, node_type: NodeKind) -> NodeId {
+        let child_id = match node_type {
+            NodeKind::Element { style } => {
+                self.arena.insert(Node::new_element(style, Some(parent)))
+            }
+            NodeKind::Text { content, style } => {
+                self.arena
+                    .insert(Node::new_text(content, style, Some(parent)))
+            }
+        };
 
         // intrusive linked list: prepend
         if let Some(first) = self.arena[parent].first_child.replace(child_id) {

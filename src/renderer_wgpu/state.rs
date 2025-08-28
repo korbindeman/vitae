@@ -14,7 +14,14 @@ use crate::core::builder::ElementBuilder;
 use crate::core::draw::push_draw_commands;
 use crate::core::layout::{Constraints, layout};
 
-use super::vertex::{Vertex, build_mesh};
+use super::vertex::{build_mesh, Vertex};
+
+struct TextItem {
+    buffer: Buffer,
+    left: f32,
+    top: f32,
+    color: Color,
+}
 
 pub struct State<'a> {
     surface: Surface<'a>,
@@ -41,8 +48,8 @@ pub struct State<'a> {
     cache: Cache,
     text_atlas: TextAtlas,
     text_renderer: TextRenderer,
-    // a buffer to hold the text we want to render
-    text_buffer: Buffer,
+    // buffers and positions for text draw commands
+    text_items: Vec<TextItem>,
     viewport: Viewport,
 }
 
@@ -94,13 +101,10 @@ impl<'a> State<'a> {
         });
 
         // --- Glyphon Text Rendering Setup ---
-        // Create a FontSystem, which serves as a database of fonts.
-        // You need to load your fonts into this system.
+        // Create a FontSystem and load a font.
         let mut font_system = FontSystem::new();
-        // TODO: Load your font data. Here's an example of how you might do it.
-        // You need to have a font file (e.g., a .ttf or .otf) available.
-        // let font_data = include_bytes!("../path/to/your/font.ttf");
-        // font_system.db_mut().load_font_data(font_data.to_vec());
+        let font_data = include_bytes!("../../inter.ttf");
+        font_system.db_mut().load_font_data(font_data.to_vec());
 
         // a SwashCache is used for glyph rasterization.
         let swash_cache = SwashCache::new();
@@ -122,8 +126,8 @@ impl<'a> State<'a> {
         // create a viewport for text rendering
         let viewport = Viewport::new(&device, &cache);
 
-        // this buffer will be populated in `rebuild_layout_and_assets`
-        let text_buffer = Buffer::new(&mut font_system, Metrics::new(24.0, 32.0));
+        // text items will be populated in `rebuild_layout_and_assets`
+        let text_items = Vec::new();
 
         // create dummy buffers before moving device into the struct
         let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -157,7 +161,7 @@ impl<'a> State<'a> {
             cache,
             text_atlas,
             text_renderer,
-            text_buffer,
+            text_items,
             viewport,
         };
 
@@ -251,6 +255,25 @@ impl<'a> State<'a> {
             },
         );
 
+        let text_areas: Vec<TextArea> = self
+            .text_items
+            .iter()
+            .map(|item| TextArea {
+                buffer: &item.buffer,
+                left: item.left,
+                top: item.top,
+                scale: 1.0,
+                bounds: TextBounds {
+                    left: 0,
+                    top: 0,
+                    right: self.size.width as i32,
+                    bottom: self.size.height as i32,
+                },
+                default_color: item.color,
+                custom_glyphs: &[],
+            })
+            .collect();
+
         self.text_renderer
             .prepare(
                 &self.device,
@@ -258,21 +281,7 @@ impl<'a> State<'a> {
                 &mut self.font_system,
                 &mut self.text_atlas,
                 &self.viewport,
-                // Define the areas of text to draw. We are just drawing our one buffer.
-                [TextArea {
-                    buffer: &self.text_buffer,
-                    left: 10.0, // X position
-                    top: 10.0,  // Y position
-                    scale: 1.0,
-                    bounds: TextBounds {
-                        left: 0,
-                        top: 0,
-                        right: self.size.width as i32,
-                        bottom: self.size.height as i32,
-                    },
-                    default_color: Color::rgb(255, 255, 255),
-                    custom_glyphs: &[],
-                }],
+                text_areas,
                 &mut self.swash_cache,
             )
             .unwrap();
@@ -359,24 +368,51 @@ impl<'a> State<'a> {
 
         self.num_indices = inds.len() as u32;
 
-        // --- 2. Rebuild Text Buffer ---
-        // This is where you would update your text content based on application state.
+        // --- 2. Rebuild Text Buffers from Draw Commands ---
+        self.text_items.clear();
 
-        // Set the buffer's size to the window size. This is important for text wrapping.
-        self.text_buffer.set_size(
-            &mut self.font_system,
-            Some(self.size.width as f32),
-            Some(self.size.height as f32),
-        );
+        for cmd in cmds.iter() {
+            if let crate::core::draw::DrawCommand::Text {
+                content,
+                x,
+                y,
+                width,
+                height,
+                color,
+            } = cmd
+            {
+                let pixel_left = ((x + 1.0) / 2.0) * self.size.width as f32;
+                let top_ndc = y + height;
+                let pixel_top = ((1.0 - top_ndc) / 2.0) * self.size.height as f32;
+                let pixel_width = (width / 2.0) * self.size.width as f32;
+                let pixel_height = (height / 2.0) * self.size.height as f32;
 
-        // Clear previous text and set new text.
-        self.text_buffer.lines.clear();
-        self.text_buffer.set_text(
-            &mut self.font_system,
-            "Hello, wgpu! This is a test of the glyphon text rendering library.\nNew lines and wrapping should work correctly.",
-            &Attrs::new().color(Color::rgb(255, 255, 255)),
-            Shaping::Advanced,
-        );
+                let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(24.0, 32.0));
+                buffer.set_size(
+                    &mut self.font_system,
+                    Some(pixel_width.max(0.0)),
+                    Some(pixel_height.max(0.0)),
+                );
+                let color_rgba = Color::rgba(
+                    (color[0] * 255.0) as u8,
+                    (color[1] * 255.0) as u8,
+                    (color[2] * 255.0) as u8,
+                    (color[3] * 255.0) as u8,
+                );
+                buffer.set_text(
+                    &mut self.font_system,
+                    content,
+                    &Attrs::new().color(color_rgba),
+                    Shaping::Advanced,
+                );
+                self.text_items.push(TextItem {
+                    buffer,
+                    left: pixel_left,
+                    top: pixel_top,
+                    color: color_rgba,
+                });
+            }
+        }
     }
 
     pub fn window(&self) -> &Window {

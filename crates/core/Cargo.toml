@@ -1,0 +1,8 @@
+[package]
+name = "vitae_core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+glam.workspace = true
+generational-arena.workspace = true

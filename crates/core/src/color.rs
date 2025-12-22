@@ -22,8 +22,8 @@ impl Color {
     }
 
     pub const WHITE: Self = Color(Vec4::splat(1.));
-    pub const BLACK: Self = Color(Vec4::splat(0.));
-    pub const GRAY: Self = Color(Vec4::splat(0.5));
+    pub const BLACK: Self = Color(Vec4::new(0., 0., 0., 1.));
+    pub const GRAY: Self = Color(Vec4::new(0.5, 0.5, 0.5, 1.));
     pub const RED: Self = Color(Vec4::new(1., 0., 0., 1.));
     pub const GREEN: Self = Color(Vec4::new(0., 1., 0., 1.));
     pub const BLUE: Self = Color(Vec4::new(0., 0., 1., 1.));

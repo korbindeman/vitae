@@ -3,29 +3,29 @@ use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
 
-use crate::core::builder::ElementBuilder;
-use crate::renderer_wgpu::state::State;
+use vitae_core::ElementBuilder;
+use vitae_render::Renderer;
 
-pub struct StateApplication<'a> {
-    state: Option<State<'a>>,
+pub struct VitaeApp<'a> {
+    renderer: Option<Renderer<'a>>,
     root_element: ElementBuilder,
 }
 
-impl<'a> StateApplication<'a> {
+impl<'a> VitaeApp<'a> {
     pub fn new(root_element: ElementBuilder) -> Self {
         Self {
-            state: None,
+            renderer: None,
             root_element,
         }
     }
 }
 
-impl<'a> ApplicationHandler for StateApplication<'a> {
+impl<'a> ApplicationHandler for VitaeApp<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window = event_loop
             .create_window(Window::default_attributes().with_title("vitae"))
             .unwrap();
-        self.state = Some(State::new(window, self.root_element.clone()));
+        self.renderer = Some(Renderer::new(window, self.root_element.clone()));
     }
 
     fn window_event(
@@ -34,24 +34,20 @@ impl<'a> ApplicationHandler for StateApplication<'a> {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        let window = self.state.as_ref().unwrap().window();
+        let Some(renderer) = self.renderer.as_mut() else {
+            return;
+        };
 
-        if window.id() == window_id {
+        if renderer.window().id() == window_id {
             match event {
                 WindowEvent::CloseRequested => {
                     event_loop.exit();
                 }
                 WindowEvent::Resized(physical_size) => {
-                    self.state.as_mut().unwrap().resize(physical_size);
-                }
-                WindowEvent::ScaleFactorChanged {
-                    scale_factor,
-                    inner_size_writer: _,
-                } => {
-                    self.state.as_mut().unwrap().scale_factor(scale_factor);
+                    renderer.resize(physical_size);
                 }
                 WindowEvent::RedrawRequested => {
-                    self.state.as_mut().unwrap().render().unwrap();
+                    renderer.render().unwrap();
                 }
                 _ => {}
             }
@@ -59,7 +55,8 @@ impl<'a> ApplicationHandler for StateApplication<'a> {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        let window = self.state.as_ref().unwrap().window();
-        window.request_redraw();
+        if let Some(renderer) = self.renderer.as_ref() {
+            renderer.window().request_redraw();
+        }
     }
 }

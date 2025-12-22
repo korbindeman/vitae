@@ -1,9 +1,6 @@
 pub use crate::App;
-pub use crate::core::color::*;
-pub use crate::core::elements::*;
-pub use crate::core::style::*;
+pub use vitae_core::{div, pc, px, text, Color, Direction, Length};
 
-// TODO: these should be somewhere else, probably in a theme module
 // SIZES
 pub const FULL: Length = Length::Percent(100.);
 pub const HALF: Length = Length::Percent(50.);

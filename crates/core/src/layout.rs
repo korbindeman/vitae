@@ -1,7 +1,5 @@
-use crate::core::{
-    element::{ElementTree, NodeId},
-    style::{Direction, Length},
-};
+use crate::element::{ElementTree, NodeId, NodeKind};
+use crate::style::{Direction, Length};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Layout {
@@ -13,22 +11,50 @@ pub struct Layout {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Constraints {
-    pub max_w: f32, // may be f32::INFINITY
+    pub max_w: f32,
     pub max_h: f32,
 }
 
-pub(crate) fn layout(
+/// Trait for measuring text content dimensions.
+/// Implemented by the renderer to provide font-aware text measurement.
+pub trait TextMeasurer {
+    fn measure(&mut self, text: &str, max_width: Option<f32>) -> (f32, f32);
+}
+
+/// No-op text measurer that returns zero dimensions.
+pub struct NoOpMeasurer;
+
+impl TextMeasurer for NoOpMeasurer {
+    fn measure(&mut self, _text: &str, _max_width: Option<f32>) -> (f32, f32) {
+        (0.0, 0.0)
+    }
+}
+
+pub fn layout<M: TextMeasurer>(
     tree: &mut ElementTree,
     id: NodeId,
     constraints: Constraints,
     cursor_x: f32,
     cursor_y: f32,
+    measurer: &mut M,
 ) -> (f32, f32) {
-    // get style and direction first before any mutable borrows
-    let style = { &tree.arena[id].style().unwrap() };
+    let node = &tree.arena[id];
+    let style = node.style().unwrap().clone();
     let dir = style.direction;
 
-    // extract margin and padding values
+    // Check if this is a text node and measure it if needed
+    let (text_w, text_h) = match &tree.arena[id].kind {
+        NodeKind::Text { content, .. } => {
+            let max_w = match style.width {
+                Length::Auto => Some(constraints.max_w),
+                Length::Px(px) => Some(px),
+                Length::Percent(p) => Some(p / 100.0 * constraints.max_w),
+            };
+            measurer.measure(content, max_w)
+        }
+        _ => (0.0, 0.0),
+    };
+
     let margin_left = style.margin.left.as_px();
     let margin_right = style.margin.right.as_px();
     let margin_top = style.margin.top.as_px();
@@ -41,18 +67,17 @@ pub(crate) fn layout(
 
     let mut w = match style.width {
         Length::Px(px) => px,
-        Length::Auto => 0.,
+        Length::Auto => text_w,
         Length::Percent(percent) => percent / 100.0 * constraints.max_w,
     };
 
     let mut h = match style.height {
         Length::Px(py) => py,
-        Length::Auto => 0.,
+        Length::Auto => text_h,
         Length::Percent(percent) => percent / 100.0 * constraints.max_h,
     };
 
     match style.aspect_ratio {
-        // TODO: this might fail if auto length logic changes
         Some(ratio) => {
             if w == 0.0 {
                 w = h * ratio;
@@ -63,18 +88,14 @@ pub(crate) fn layout(
         None => {}
     };
 
-    // visit children, stacking them Row- or Column-wise
     let mut max_cross: f32 = 0.0;
     let mut main_total: f32 = 0.0;
 
-    // children start at the parent's position plus margin and padding
     let mut child_cursor_x = cursor_x + margin_left + padding_left;
     let mut child_cursor_y = cursor_y + margin_top + padding_top;
 
-    // collect children first to avoid borrowing issues
     let children: Vec<NodeId> = tree.children(id).collect();
     for child in children {
-        // child always gets *all* the remaining room on the cross axis, minus padding
         let child_constraints = if dir == Direction::Row {
             Constraints {
                 max_w: w - padding_left - padding_right,
@@ -93,6 +114,7 @@ pub(crate) fn layout(
             child_constraints,
             child_cursor_x,
             child_cursor_y,
+            measurer,
         );
 
         match dir {
@@ -109,7 +131,6 @@ pub(crate) fn layout(
         }
     }
 
-    // if my own size was Auto, grow to fit children plus padding
     match dir {
         Direction::Row => {
             if w == 0.0 {
@@ -129,7 +150,6 @@ pub(crate) fn layout(
         }
     }
 
-    // add margin to the final size
     let final_w = w + margin_left + margin_right;
     let final_h = h + margin_top + margin_bottom;
 

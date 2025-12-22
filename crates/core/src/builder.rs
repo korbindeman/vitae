@@ -1,19 +1,16 @@
-use crate::core::{element::NodeKind, style::EdgeSizes};
+use crate::element::NodeKind;
+use crate::style::EdgeSizes;
 
-use super::{
-    color::Color,
-    element::ElementTree,
-    style::{Direction, Length, Style},
-};
+use crate::color::Color;
+use crate::element::ElementTree;
+use crate::style::{Direction, Length, Style};
 
-// TODO: this should be unified with NodeKind
 #[derive(Clone, Debug)]
 enum ElementKind {
     Element,
     Text,
 }
 
-// TODO: use typestate to disallow invalid combinations
 #[derive(Clone, Debug)]
 pub struct ElementBuilder {
     node_type: ElementKind,
@@ -91,7 +88,6 @@ impl ElementBuilder {
     }
 
     /// Set the aspect ratio of the element to a square (1:1).
-    // TODO: might be redundant
     pub fn square(mut self) -> Self {
         self.style.aspect_ratio = Some(1.0);
         self
@@ -101,6 +97,7 @@ impl ElementBuilder {
         self.style.padding = EdgeSizes::splat(size);
         self
     }
+
     pub fn m(mut self, size: Length) -> Self {
         self.style.margin = EdgeSizes::splat(size);
         self
@@ -112,14 +109,13 @@ impl ElementBuilder {
         self
     }
 
-    /// Add a children to the element.
+    /// Add children to the element.
     pub fn children<I>(mut self, new_children: I) -> Self
     where
         I: IntoIterator<Item = ElementBuilder>,
     {
         let iter = new_children.into_iter();
 
-        // if the iterator can tell us its exact length, pre-reserve
         if let (_, Some(len)) = iter.size_hint() {
             self.children.reserve(len);
         }
@@ -129,11 +125,10 @@ impl ElementBuilder {
     }
 
     pub fn build(self) -> ElementTree {
-        let mut tree = ElementTree::new(self.style.clone()); // root node
-        let mut stack = vec![(tree.root, self.children)]; // DFS
+        let mut tree = ElementTree::new(self.style.clone());
+        let mut stack = vec![(tree.root, self.children)];
 
         while let Some((parent_id, mut raw_children)) = stack.pop() {
-            // iterate in reverse to preserve source order when we push_front
             for child_builder in raw_children.drain(..).rev() {
                 let node_kind = match child_builder.node_type {
                     ElementKind::Element => NodeKind::Element {
@@ -152,5 +147,11 @@ impl ElementBuilder {
             }
         }
         tree
+    }
+}
+
+impl Default for ElementBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }

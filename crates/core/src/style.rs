@@ -1,4 +1,4 @@
-use super::color::Color;
+use crate::color::Color;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Length {
@@ -70,20 +70,16 @@ impl EdgeSizes {
 pub struct Style {
     pub margin: EdgeSizes,
     pub padding: EdgeSizes,
-    // pub border: EdgeSizes,
     pub bg_color: Color,
     pub text_color: Color,
 
-    // TODO: min and max width/height
     pub width: Length,
     pub height: Length,
     pub aspect_ratio: Option<f32>,
 
-    // layout
-    // TODO: align, justify
     pub direction: Direction,
     pub wrap: bool,
-    pub reverse: bool, // render children in reverse order
+    pub reverse: bool,
 }
 
 impl Default for Style {
@@ -91,7 +87,6 @@ impl Default for Style {
         Self {
             margin: EdgeSizes::default(),
             padding: EdgeSizes::default(),
-            // border: EdgeSizes::default(),
             width: Length::Auto,
             height: Length::Auto,
             aspect_ratio: None,

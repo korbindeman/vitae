@@ -1,0 +1,11 @@
+[package]
+name = "vitae"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vitae_core.workspace = true
+vitae_render.workspace = true
+
+winit.workspace = true
+pollster.workspace = true

@@ -1,7 +1,7 @@
 use generational_arena::{Arena, Index};
 
-use super::layout::Layout;
-use super::style::Style;
+use crate::layout::Layout;
+use crate::style::Style;
 
 pub type NodeId = Index;
 
@@ -20,8 +20,8 @@ pub struct Node {
 
     // data
     pub kind: NodeKind,
-    pub layout: Layout, // mutated by layout pass
-    pub dirty: bool,    // marks subtree needing re-layout
+    pub layout: Layout,
+    pub dirty: bool,
 }
 
 impl Node {
@@ -50,7 +50,7 @@ impl Node {
     pub fn style(&self) -> Option<&Style> {
         match &self.kind {
             NodeKind::Element { style } => Some(style),
-            NodeKind::Text { content, style } => Some(style),
+            NodeKind::Text { content: _, style } => Some(style),
         }
     }
 }
@@ -104,10 +104,10 @@ impl ElementTree {
         while let Some(node) = cur {
             if !self.arena[node].dirty {
                 self.arena[node].dirty = true;
-                cur = self.arena[node].parent; // bubble up
+                cur = self.arena[node].parent;
             } else {
                 break;
-            } // ancestor already dirty
+            }
         }
     }
 

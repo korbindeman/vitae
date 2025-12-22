@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use parley::{FontContext, LayoutContext, LineHeight, StyleProperty};
@@ -26,6 +27,17 @@ struct ParleyMeasurer<'a> {
 impl TextMeasurer for ParleyMeasurer<'_> {
     fn measure(&mut self, text: &str, max_width: Option<f32>) -> (f32, f32) {
         let mut builder = self.layout_cx.ranged_builder(self.font_cx, text, 1.0, true);
+
+        // Use font stack with system UI font first, then symbol fonts as fallback
+        // This way regular text uses the nice system font, but chess symbols still work
+        builder.push_default(StyleProperty::FontStack(parley::style::FontStack::List(Cow::Borrowed(&[
+            parley::style::FontFamily::Generic(parley::style::GenericFamily::SystemUi),
+            parley::style::FontFamily::Named(Cow::Borrowed("Noto Sans Symbols 2")),
+            parley::style::FontFamily::Named(Cow::Borrowed("Segoe UI Symbol")),
+            parley::style::FontFamily::Named(Cow::Borrowed("Apple Symbols")),
+            parley::style::FontFamily::Generic(parley::style::GenericFamily::SansSerif),
+        ]))));
+
         builder.push_default(StyleProperty::FontSize(self.font_size));
         let mut text_layout = builder.build(text);
         text_layout.break_all_lines(max_width);
@@ -97,6 +109,11 @@ impl<'a> Renderer<'a> {
             self.context
                 .resize_surface(&mut self.surface, new_size.width, new_size.height);
         }
+    }
+
+    /// Update the root element (used when model/signals change)
+    pub fn set_root(&mut self, root_element: ElementBuilder) {
+        self.root_element = root_element;
     }
 
     pub fn render(&mut self) -> Result<(), vello::wgpu::SurfaceError> {
@@ -188,11 +205,13 @@ impl<'a> Renderer<'a> {
             }
             NodeKind::Text { content, style } => {
                 let text_color = style.text_color.to_array();
+                let font_size = style.font_size.unwrap_or(DEFAULT_FONT_SIZE);
                 self.render_text(
                     content,
                     layout.x,
                     layout.y,
                     layout.width,
+                    font_size,
                     [text_color[0], text_color[1], text_color[2], text_color[3]],
                 );
             }
@@ -206,13 +225,23 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    fn render_text(&mut self, text: &str, x: f32, y: f32, max_width: f32, color: [f32; 4]) {
-        let font_size = DEFAULT_FONT_SIZE;
+    fn render_text(&mut self, text: &str, x: f32, y: f32, max_width: f32, font_size: f32, color: [f32; 4]) {
         let line_height = 1.2;
 
         let mut builder = self
             .layout_cx
             .ranged_builder(&mut self.font_cx, text, 1.0, true);
+
+        // Set font family stack with system UI font first, then symbol fonts as fallback
+        // This way regular text uses the nice system font, but chess symbols still work
+        builder.push_default(StyleProperty::FontStack(parley::style::FontStack::List(Cow::Borrowed(&[
+            parley::style::FontFamily::Generic(parley::style::GenericFamily::SystemUi),
+            parley::style::FontFamily::Named(Cow::Borrowed("Noto Sans Symbols 2")),
+            parley::style::FontFamily::Named(Cow::Borrowed("Segoe UI Symbol")),
+            parley::style::FontFamily::Named(Cow::Borrowed("Apple Symbols")),
+            parley::style::FontFamily::Generic(parley::style::GenericFamily::SansSerif),
+        ]))));
+
         builder.push_default(StyleProperty::FontSize(font_size));
         builder.push_default(StyleProperty::LineHeight(LineHeight::FontSizeRelative(
             line_height,
@@ -266,5 +295,68 @@ impl<'a> Renderer<'a> {
 
     pub fn window(&self) -> &Window {
         &self.window
+    }
+
+    /// Perform hit-testing to find which element was clicked
+    /// Returns the event handler if an element with a click handler was hit
+    pub fn hit_test(&mut self, x: f32, y: f32) -> Option<vitae_core::EventHandler> {
+        // Build and layout the tree to get correct positions
+        let mut tree = self.root_element.clone().build();
+        let root = tree.root;
+
+        // Run layout to calculate positions
+        let mut measurer = ParleyMeasurer {
+            font_cx: &mut self.font_cx,
+            layout_cx: &mut self.layout_cx,
+            font_size: DEFAULT_FONT_SIZE,
+        };
+
+        layout(
+            &mut tree,
+            root,
+            Constraints {
+                max_w: self.size.width as f32,
+                max_h: self.size.height as f32,
+            },
+            0.0,
+            0.0,
+            &mut measurer,
+        );
+
+        // Perform depth-first search to find the deepest (frontmost) element at (x, y)
+        self.hit_test_node(&tree, tree.root, x, y)
+    }
+
+    fn hit_test_node(
+        &self,
+        tree: &vitae_core::ElementTree,
+        node_id: vitae_core::NodeId,
+        x: f32,
+        y: f32,
+    ) -> Option<vitae_core::EventHandler> {
+        let node = tree.get_node(node_id);
+        let layout = &node.layout;
+
+        // Check if point is inside this node's bounds
+        let in_bounds = x >= layout.x
+            && x <= layout.x + layout.width
+            && y >= layout.y
+            && y <= layout.y + layout.height;
+
+        if !in_bounds {
+            return None;
+        }
+
+        // Check children first (they're on top)
+        let mut child = node.first_child;
+        while let Some(child_id) = child {
+            if let Some(handler) = self.hit_test_node(tree, child_id, x, y) {
+                return Some(handler);
+            }
+            child = tree.get_node(child_id).next_sibling;
+        }
+
+        // If no child was hit, check if this node has a handler
+        node.on_click.clone()
     }
 }

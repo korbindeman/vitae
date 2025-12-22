@@ -1,4 +1,5 @@
 pub mod prelude;
+pub mod signal;
 mod window;
 
 pub use vitae_core as core;
@@ -8,16 +9,35 @@ use vitae_core::ElementBuilder;
 use window::VitaeApp;
 use winit::event_loop::EventLoop;
 
-pub struct App {
+pub use signal::{use_signal, Signal};
+
+pub struct App<M: Clone + 'static> {
     event_loop: EventLoop<()>,
-    vitae_app: VitaeApp<'static>,
+    vitae_app: VitaeApp<'static, M>,
 }
 
-impl App {
-    pub fn new(root_element: ElementBuilder) -> Self {
+impl<M: Clone + 'static> App<M> {
+    /// Create a new application with a model and view function
+    ///
+    /// # Arguments
+    /// * `initial_model` - The initial state of your application
+    /// * `view` - A function that takes a reference to the model and returns the UI tree
+    ///
+    /// # Example
+    /// ```
+    /// #[derive(Clone)]
+    /// struct Counter { count: i32 }
+    ///
+    /// fn view(model: &Counter) -> ElementBuilder {
+    ///     div().child(text(format!("Count: {}", model.count)))
+    /// }
+    ///
+    /// App::new(Counter { count: 0 }, view).run();
+    /// ```
+    pub fn new(initial_model: M, view: fn(&M) -> ElementBuilder) -> Self {
         App {
             event_loop: EventLoop::new().unwrap(),
-            vitae_app: VitaeApp::new(root_element),
+            vitae_app: VitaeApp::new(initial_model, view),
         }
     }
 

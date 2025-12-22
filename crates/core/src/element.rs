@@ -1,17 +1,34 @@
 use generational_arena::{Arena, Index};
 
+use crate::builder::EventHandler;
 use crate::layout::Layout;
 use crate::style::Style;
 
 pub type NodeId = Index;
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub enum NodeKind {
     Element { style: Style },
     Text { content: String, style: Style },
 }
 
-#[derive(Debug)]
+// Manual Debug implementation to handle EventHandler
+impl std::fmt::Debug for NodeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NodeKind::Element { style } => f
+                .debug_struct("Element")
+                .field("style", style)
+                .finish(),
+            NodeKind::Text { content, style } => f
+                .debug_struct("Text")
+                .field("content", content)
+                .field("style", style)
+                .finish(),
+        }
+    }
+}
+
 pub struct Node {
     // tree topology
     pub parent: Option<NodeId>,
@@ -22,10 +39,28 @@ pub struct Node {
     pub kind: NodeKind,
     pub layout: Layout,
     pub dirty: bool,
+
+    // event handlers
+    pub on_click: Option<EventHandler>,
+}
+
+// Manual Debug implementation
+impl std::fmt::Debug for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Node")
+            .field("parent", &self.parent)
+            .field("first_child", &self.first_child)
+            .field("next_sibling", &self.next_sibling)
+            .field("kind", &self.kind)
+            .field("layout", &self.layout)
+            .field("dirty", &self.dirty)
+            .field("on_click", &self.on_click.as_ref().map(|_| "EventHandler"))
+            .finish()
+    }
 }
 
 impl Node {
-    fn new_element(style: Style, parent: Option<NodeId>) -> Self {
+    fn new_element(style: Style, parent: Option<NodeId>, on_click: Option<EventHandler>) -> Self {
         Self {
             parent,
             first_child: None,
@@ -33,10 +68,11 @@ impl Node {
             kind: NodeKind::Element { style },
             layout: Layout::default(),
             dirty: true,
+            on_click,
         }
     }
 
-    fn new_text(content: String, style: Style, parent: Option<NodeId>) -> Self {
+    fn new_text(content: String, style: Style, parent: Option<NodeId>, on_click: Option<EventHandler>) -> Self {
         Self {
             parent,
             first_child: None,
@@ -44,6 +80,7 @@ impl Node {
             kind: NodeKind::Text { content, style },
             layout: Layout::default(),
             dirty: true,
+            on_click,
         }
     }
 
@@ -61,20 +98,20 @@ pub struct ElementTree {
 }
 
 impl ElementTree {
-    pub fn new(style: Style) -> Self {
+    pub fn new(style: Style, on_click: Option<EventHandler>) -> Self {
         let mut arena = Arena::new();
-        let root = arena.insert(Node::new_element(style, None));
+        let root = arena.insert(Node::new_element(style, None, on_click));
         Self { arena, root }
     }
 
-    pub fn add_child(&mut self, parent: NodeId, node_type: NodeKind) -> NodeId {
+    pub fn add_child(&mut self, parent: NodeId, node_type: NodeKind, on_click: Option<EventHandler>) -> NodeId {
         let child_id = match node_type {
             NodeKind::Element { style } => {
-                self.arena.insert(Node::new_element(style, Some(parent)))
+                self.arena.insert(Node::new_element(style, Some(parent), on_click))
             }
             NodeKind::Text { content, style } => {
                 self.arena
-                    .insert(Node::new_text(content, style, Some(parent)))
+                    .insert(Node::new_text(content, style, Some(parent), on_click))
             }
         };
 

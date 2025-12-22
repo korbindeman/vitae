@@ -4,6 +4,8 @@ use crate::style::EdgeSizes;
 use crate::color::Color;
 use crate::element::ElementTree;
 use crate::style::{Direction, Length, Style};
+use std::any::Any;
+use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 enum ElementKind {
@@ -11,12 +13,29 @@ enum ElementKind {
     Text,
 }
 
-#[derive(Clone, Debug)]
+/// Event handler that can update the model
+pub type EventHandler = Rc<dyn Fn(&mut dyn Any)>;
+
+#[derive(Clone)]
 pub struct ElementBuilder {
     node_type: ElementKind,
     style: Style,
     text: Option<String>,
     children: Vec<ElementBuilder>,
+    on_click: Option<EventHandler>,
+}
+
+// Manual Debug implementation since EventHandler doesn't implement Debug
+impl std::fmt::Debug for ElementBuilder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ElementBuilder")
+            .field("node_type", &self.node_type)
+            .field("style", &self.style)
+            .field("text", &self.text)
+            .field("children", &self.children)
+            .field("on_click", &self.on_click.as_ref().map(|_| "EventHandler"))
+            .finish()
+    }
 }
 
 impl ElementBuilder {
@@ -26,6 +45,7 @@ impl ElementBuilder {
             style: Style::default(),
             text: None,
             children: Vec::new(),
+            on_click: None,
         }
     }
 
@@ -35,6 +55,7 @@ impl ElementBuilder {
             style: Style::default(),
             text: Some(text),
             children: Vec::new(),
+            on_click: None,
         }
     }
 
@@ -103,6 +124,12 @@ impl ElementBuilder {
         self
     }
 
+    /// Set the font size for text elements.
+    pub fn font_size(mut self, size: f32) -> Self {
+        self.style.font_size = Some(size);
+        self
+    }
+
     /// Add a child to the element.
     pub fn child(mut self, child: ElementBuilder) -> Self {
         self.children.push(child);
@@ -124,8 +151,36 @@ impl ElementBuilder {
         self
     }
 
+    /// Attach a click event handler that can update the model
+    ///
+    /// # Example
+    /// ```
+    /// // With a model method
+    /// button("Click me").on_click(MyModel::increment)
+    ///
+    /// // With a closure
+    /// button("Reset").on_click(|model: &mut MyModel| model.count = 0)
+    /// ```
+    pub fn on_click<M, F>(mut self, handler: F) -> Self
+    where
+        M: 'static,
+        F: Fn(&mut M) + 'static,
+    {
+        self.on_click = Some(Rc::new(move |model: &mut dyn Any| {
+            if let Some(m) = model.downcast_mut::<M>() {
+                handler(m);
+            }
+        }));
+        self
+    }
+
+    /// Get the click handler (used internally for event handling)
+    pub fn get_click_handler(&self) -> Option<EventHandler> {
+        self.on_click.clone()
+    }
+
     pub fn build(self) -> ElementTree {
-        let mut tree = ElementTree::new(self.style.clone());
+        let mut tree = ElementTree::new(self.style.clone(), self.on_click.clone());
         let mut stack = vec![(tree.root, self.children)];
 
         while let Some((parent_id, mut raw_children)) = stack.pop() {
@@ -140,7 +195,7 @@ impl ElementBuilder {
                     },
                 };
 
-                let id = tree.add_child(parent_id, node_kind);
+                let id = tree.add_child(parent_id, node_kind, child_builder.on_click.clone());
                 if !child_builder.children.is_empty() {
                     stack.push((id, child_builder.children));
                 }

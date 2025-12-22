@@ -80,6 +80,8 @@ pub struct Style {
     pub direction: Direction,
     pub wrap: bool,
     pub reverse: bool,
+
+    pub font_size: Option<f32>,
 }
 
 impl Default for Style {
@@ -95,6 +97,7 @@ impl Default for Style {
             text_color: Color::BLACK,
             wrap: false,
             reverse: false,
+            font_size: None,
         }
     }
 }

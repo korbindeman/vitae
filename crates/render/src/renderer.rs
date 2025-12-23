@@ -30,13 +30,15 @@ impl TextMeasurer for ParleyMeasurer<'_> {
 
         // Use font stack with system UI font first, then symbol fonts as fallback
         // This way regular text uses the nice system font, but chess symbols still work
-        builder.push_default(StyleProperty::FontStack(parley::style::FontStack::List(Cow::Borrowed(&[
-            parley::style::FontFamily::Generic(parley::style::GenericFamily::SystemUi),
-            parley::style::FontFamily::Named(Cow::Borrowed("Noto Sans Symbols 2")),
-            parley::style::FontFamily::Named(Cow::Borrowed("Segoe UI Symbol")),
-            parley::style::FontFamily::Named(Cow::Borrowed("Apple Symbols")),
-            parley::style::FontFamily::Generic(parley::style::GenericFamily::SansSerif),
-        ]))));
+        builder.push_default(StyleProperty::FontStack(parley::style::FontStack::List(
+            Cow::Borrowed(&[
+                parley::style::FontFamily::Generic(parley::style::GenericFamily::SystemUi),
+                parley::style::FontFamily::Named(Cow::Borrowed("Noto Sans Symbols 2")),
+                parley::style::FontFamily::Named(Cow::Borrowed("Segoe UI Symbol")),
+                parley::style::FontFamily::Named(Cow::Borrowed("Apple Symbols")),
+                parley::style::FontFamily::Generic(parley::style::GenericFamily::SansSerif),
+            ]),
+        )));
 
         builder.push_default(StyleProperty::FontSize(self.font_size));
         let mut text_layout = builder.build(text);
@@ -225,7 +227,15 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    fn render_text(&mut self, text: &str, x: f32, y: f32, max_width: f32, font_size: f32, color: [f32; 4]) {
+    fn render_text(
+        &mut self,
+        text: &str,
+        x: f32,
+        y: f32,
+        max_width: f32,
+        font_size: f32,
+        color: [f32; 4],
+    ) {
         let line_height = 1.2;
 
         let mut builder = self
@@ -234,13 +244,15 @@ impl<'a> Renderer<'a> {
 
         // Set font family stack with system UI font first, then symbol fonts as fallback
         // This way regular text uses the nice system font, but chess symbols still work
-        builder.push_default(StyleProperty::FontStack(parley::style::FontStack::List(Cow::Borrowed(&[
-            parley::style::FontFamily::Generic(parley::style::GenericFamily::SystemUi),
-            parley::style::FontFamily::Named(Cow::Borrowed("Noto Sans Symbols 2")),
-            parley::style::FontFamily::Named(Cow::Borrowed("Segoe UI Symbol")),
-            parley::style::FontFamily::Named(Cow::Borrowed("Apple Symbols")),
-            parley::style::FontFamily::Generic(parley::style::GenericFamily::SansSerif),
-        ]))));
+        builder.push_default(StyleProperty::FontStack(parley::style::FontStack::List(
+            Cow::Borrowed(&[
+                parley::style::FontFamily::Generic(parley::style::GenericFamily::SystemUi),
+                parley::style::FontFamily::Named(Cow::Borrowed("Noto Sans Symbols 2")),
+                parley::style::FontFamily::Named(Cow::Borrowed("Segoe UI Symbol")),
+                parley::style::FontFamily::Named(Cow::Borrowed("Apple Symbols")),
+                parley::style::FontFamily::Generic(parley::style::GenericFamily::SansSerif),
+            ]),
+        )));
 
         builder.push_default(StyleProperty::FontSize(font_size));
         builder.push_default(StyleProperty::LineHeight(LineHeight::FontSizeRelative(
@@ -357,6 +369,11 @@ impl<'a> Renderer<'a> {
         }
 
         // If no child was hit, check if this node has a handler
-        node.on_click.clone()
+        node.on_event.clone()
+    }
+
+    /// Get the event handler for the root element.
+    pub fn get_root_handler(&self) -> Option<vitae_core::EventHandler> {
+        self.root_element.get_event_handler()
     }
 }

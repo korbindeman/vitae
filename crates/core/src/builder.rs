@@ -1,11 +1,10 @@
-use crate::element::NodeKind;
-use crate::style::EdgeSizes;
-
-use crate::color::Color;
-use crate::element::ElementTree;
-use crate::style::{Direction, Length, Style};
 use std::any::Any;
 use std::rc::Rc;
+
+use crate::color::Color;
+use crate::element::{ElementTree, NodeKind};
+use crate::events::{Event, EventHandler, EventResult, MouseButton};
+use crate::style::{Direction, EdgeSizes, Length, Style};
 
 #[derive(Clone, Debug)]
 enum ElementKind {
@@ -13,16 +12,13 @@ enum ElementKind {
     Text,
 }
 
-/// Event handler that can update the model
-pub type EventHandler = Rc<dyn Fn(&mut dyn Any)>;
-
 #[derive(Clone)]
 pub struct ElementBuilder {
     node_type: ElementKind,
     style: Style,
     text: Option<String>,
     children: Vec<ElementBuilder>,
-    on_click: Option<EventHandler>,
+    on_event: Option<EventHandler>,
 }
 
 // Manual Debug implementation since EventHandler doesn't implement Debug
@@ -33,7 +29,7 @@ impl std::fmt::Debug for ElementBuilder {
             .field("style", &self.style)
             .field("text", &self.text)
             .field("children", &self.children)
-            .field("on_click", &self.on_click.as_ref().map(|_| "EventHandler"))
+            .field("on_event", &self.on_event.as_ref().map(|_| "EventHandler"))
             .finish()
     }
 }
@@ -45,7 +41,7 @@ impl ElementBuilder {
             style: Style::default(),
             text: None,
             children: Vec::new(),
-            on_click: None,
+            on_event: None,
         }
     }
 
@@ -55,7 +51,7 @@ impl ElementBuilder {
             style: Style::default(),
             text: Some(text),
             children: Vec::new(),
-            on_click: None,
+            on_event: None,
         }
     }
 
@@ -151,36 +147,90 @@ impl ElementBuilder {
         self
     }
 
-    /// Attach a click event handler that can update the model
+    /// Attach a generic event handler that receives all events.
+    ///
+    /// This is the foundation for all event handling. Typed helpers like
+    /// `on_click` are convenience wrappers around this method.
     ///
     /// # Example
     /// ```
-    /// // With a model method
-    /// button("Click me").on_click(MyModel::increment)
-    ///
-    /// // With a closure
-    /// button("Reset").on_click(|model: &mut MyModel| model.count = 0)
+    /// div().on_event(|model: &mut MyModel, event: &Event| {
+    ///     match event {
+    ///         Event::Click => { model.count += 1; }
+    ///     }
+    ///     EventResult::Continue
+    /// })
     /// ```
-    pub fn on_click<M, F>(mut self, handler: F) -> Self
+    pub fn on_event<M, F>(mut self, handler: F) -> Self
     where
         M: 'static,
-        F: Fn(&mut M) + 'static,
+        F: Fn(&mut M, &Event) -> EventResult + 'static,
     {
-        self.on_click = Some(Rc::new(move |model: &mut dyn Any| {
+        self.on_event = Some(Rc::new(move |model: &mut dyn Any, event: &Event| {
             if let Some(m) = model.downcast_mut::<M>() {
-                handler(m);
+                handler(m, event)
+            } else {
+                EventResult::Continue
             }
         }));
         self
     }
 
-    /// Get the click handler (used internally for event handling)
-    pub fn get_click_handler(&self) -> Option<EventHandler> {
-        self.on_click.clone()
+    /// Attach a left click event handler.
+    ///
+    /// # Example
+    /// ```
+    /// button("Click me").on_left_click(MyModel::increment)
+    /// ```
+    pub fn on_left_click<M, F>(self, handler: F) -> Self
+    where
+        M: 'static,
+        F: Fn(&mut M) + 'static,
+    {
+        self.on_event(move |model: &mut M, event: &Event| {
+            if matches!(
+                event,
+                Event::Click {
+                    button: MouseButton::Left
+                }
+            ) {
+                handler(model);
+            }
+            EventResult::Continue
+        })
+    }
+
+    /// Attach a right click event handler.
+    ///
+    /// # Example
+    /// ```
+    /// button("Options").on_right_click(MyModel::show_context_menu)
+    /// ```
+    pub fn on_right_click<M, F>(self, handler: F) -> Self
+    where
+        M: 'static,
+        F: Fn(&mut M) + 'static,
+    {
+        self.on_event(move |model: &mut M, event: &Event| {
+            if matches!(
+                event,
+                Event::Click {
+                    button: MouseButton::Right
+                }
+            ) {
+                handler(model);
+            }
+            EventResult::Continue
+        })
+    }
+
+    /// Get the event handler (used internally for event dispatch).
+    pub fn get_event_handler(&self) -> Option<EventHandler> {
+        self.on_event.clone()
     }
 
     pub fn build(self) -> ElementTree {
-        let mut tree = ElementTree::new(self.style.clone(), self.on_click.clone());
+        let mut tree = ElementTree::new(self.style.clone(), self.on_event.clone());
         let mut stack = vec![(tree.root, self.children)];
 
         while let Some((parent_id, mut raw_children)) = stack.pop() {
@@ -195,7 +245,7 @@ impl ElementBuilder {
                     },
                 };
 
-                let id = tree.add_child(parent_id, node_kind, child_builder.on_click.clone());
+                let id = tree.add_child(parent_id, node_kind, child_builder.on_event.clone());
                 if !child_builder.children.is_empty() {
                     stack.push((id, child_builder.children));
                 }

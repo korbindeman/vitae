@@ -1,45 +1,8 @@
+mod board;
+mod types;
+
+use types::{Piece, PlayerColor};
 use vitae::prelude::*;
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-enum PieceType {
-    King,
-    Queen,
-    Rook,
-    Bishop,
-    Knight,
-    Pawn,
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-enum PlayerColor {
-    White,
-    Black,
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-struct Piece {
-    piece_type: PieceType,
-    color: PlayerColor,
-}
-
-impl Piece {
-    fn unicode(&self) -> &'static str {
-        match (self.color, self.piece_type) {
-            (PlayerColor::White, PieceType::King) => "♔",
-            (PlayerColor::White, PieceType::Queen) => "♕",
-            (PlayerColor::White, PieceType::Rook) => "♖",
-            (PlayerColor::White, PieceType::Bishop) => "♗",
-            (PlayerColor::White, PieceType::Knight) => "♘",
-            (PlayerColor::White, PieceType::Pawn) => "♙",
-            (PlayerColor::Black, PieceType::King) => "♚",
-            (PlayerColor::Black, PieceType::Queen) => "♛",
-            (PlayerColor::Black, PieceType::Rook) => "♜",
-            (PlayerColor::Black, PieceType::Bishop) => "♝",
-            (PlayerColor::Black, PieceType::Knight) => "♞",
-            (PlayerColor::Black, PieceType::Pawn) => "♟",
-        }
-    }
-}
 
 #[derive(Clone)]
 struct ChessGame {
@@ -49,60 +12,40 @@ struct ChessGame {
     turn: PlayerColor,
 }
 
-impl PlayerColor {
-    fn opposite(self) -> Self {
-        match self {
-            PlayerColor::White => PlayerColor::Black,
-            PlayerColor::Black => PlayerColor::White,
-        }
-    }
-}
-
 impl ChessGame {
     fn new() -> Self {
-        let mut board = [[None; 8]; 8];
-
-        // Set up black pieces (row 0 and 1)
-        board[0] = [
-            Some(Piece { piece_type: PieceType::Rook, color: PlayerColor::Black }),
-            Some(Piece { piece_type: PieceType::Knight, color: PlayerColor::Black }),
-            Some(Piece { piece_type: PieceType::Bishop, color: PlayerColor::Black }),
-            Some(Piece { piece_type: PieceType::Queen, color: PlayerColor::Black }),
-            Some(Piece { piece_type: PieceType::King, color: PlayerColor::Black }),
-            Some(Piece { piece_type: PieceType::Bishop, color: PlayerColor::Black }),
-            Some(Piece { piece_type: PieceType::Knight, color: PlayerColor::Black }),
-            Some(Piece { piece_type: PieceType::Rook, color: PlayerColor::Black }),
-        ];
-        for col in 0..8 {
-            board[1][col] = Some(Piece { piece_type: PieceType::Pawn, color: PlayerColor::Black });
-        }
-
-        // Set up white pieces (row 6 and 7)
-        for col in 0..8 {
-            board[6][col] = Some(Piece { piece_type: PieceType::Pawn, color: PlayerColor::White });
-        }
-        board[7] = [
-            Some(Piece { piece_type: PieceType::Rook, color: PlayerColor::White }),
-            Some(Piece { piece_type: PieceType::Knight, color: PlayerColor::White }),
-            Some(Piece { piece_type: PieceType::Bishop, color: PlayerColor::White }),
-            Some(Piece { piece_type: PieceType::Queen, color: PlayerColor::White }),
-            Some(Piece { piece_type: PieceType::King, color: PlayerColor::White }),
-            Some(Piece { piece_type: PieceType::Bishop, color: PlayerColor::White }),
-            Some(Piece { piece_type: PieceType::Knight, color: PlayerColor::White }),
-            Some(Piece { piece_type: PieceType::Rook, color: PlayerColor::White }),
-        ];
-
         Self {
-            board,
+            board: board::setup_initial_board(),
             selected: None,
             last_move: None,
             turn: PlayerColor::White,
         }
     }
 
+    fn is_valid_move(
+        &self,
+        from_row: usize,
+        from_col: usize,
+        to_row: usize,
+        to_col: usize,
+    ) -> bool {
+        // Disallow move to the same square
+        if from_row == to_row && from_col == to_col {
+            return false;
+        }
+
+        true
+    }
+
     fn select_square(&mut self, row: usize, col: usize) {
         if let Some((selected_row, selected_col)) = self.selected {
-            // Move piece (simplified - no validation)
+            // Validate the move
+            if !self.is_valid_move(selected_row, selected_col, row, col) {
+                self.selected = None;
+                return;
+            }
+
+            // Move piece
             self.board[row][col] = self.board[selected_row][selected_col].take();
             self.last_move = Some(format!(
                 "{}{}-{}{}",
@@ -145,10 +88,7 @@ fn view(game: &ChessGame) -> ElementBuilder {
             .h(pc(100. / 8.))
             .w(FULL)
             .children((0..8).map(move |col| {
-                let mut square = div()
-                    .bg(checkerboard(row, col))
-                    .w(pc(100. / 8.))
-                    .h(FULL);
+                let mut square = div().bg(checkerboard(row, col)).w(pc(100. / 8.)).h(FULL);
 
                 // Highlight selected square
                 if game.selected == Some((row, col)) {
@@ -162,13 +102,10 @@ fn view(game: &ChessGame) -> ElementBuilder {
 
                 // Add piece if present
                 if let Some(piece) = game.board[row][col] {
-                    square = square.child(
-                        text(piece.unicode())
-                            .font_size(48.0)
-                    );
+                    square = square.child(text(piece.unicode()).font_size(64.0));
                 }
 
-                square.on_click(move |g: &mut ChessGame| g.select_square(row, col))
+                square.on_left_click(move |g: &mut ChessGame| g.select_square(row, col))
             }))
     }));
 
@@ -182,13 +119,11 @@ fn view(game: &ChessGame) -> ElementBuilder {
             PlayerColor::White => "White to move",
             PlayerColor::Black => "Black to move",
         }))
-        .child(
-            if let Some(ref last_move) = game.last_move {
-                text(format!("Last move: {}", last_move))
-            } else {
-                text("No moves yet")
-            }
-        );
+        .child(if let Some(ref last_move) = game.last_move {
+            text(format!("Last move: {}", last_move))
+        } else {
+            text("No moves yet")
+        });
 
     div().size(FULL).row().child(chessboard).child(side_panel)
 }

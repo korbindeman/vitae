@@ -7,7 +7,7 @@ A work-in-progress, GPU-accelerated desktop UI library.
 - [x] Basic styling
 - [x] Layout engine (basic)
 - [x] Text rendering
-- [ ] State management
+- [x] State management
 
 ---
 

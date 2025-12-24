@@ -40,9 +40,17 @@ fn main() {
 }
 ```
 
+## Demo
+
+Run the chess demo:
+
+```bash
+cargo run --bin vitae_chess
+```
+
 ## Documentation
 
-These are the most imporant ones, see [docs/](docs/) for more.
+These are the most important ones, see [docs/](docs/) for more.
 
 - [Getting Started](docs/getting-started.md)
 - [Layout](docs/layout.md)

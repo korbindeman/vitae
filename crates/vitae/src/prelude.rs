@@ -1,5 +1,5 @@
 pub use crate::{use_signal, App, Signal};
-pub use vitae_core::{div, pc, px, text, Color, Direction, Length, ElementBuilder};
+pub use vitae_core::{div, pc, portal, px, text, Color, Direction, ElementBuilder, Length};
 
 // SIZES
 pub const FULL: Length = Length::Percent(100.);

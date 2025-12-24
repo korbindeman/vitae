@@ -11,7 +11,7 @@ use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
 use vitae_core::{
-    layout, Constraints, ElementBuilder, ElementTree, NodeId, NodeKind, TextMeasurer,
+    layout, Constraints, ElementBuilder, ElementTree, NodeId, NodeKind, Position, TextMeasurer,
 };
 
 // Sensible defaults (TODO: replace with theme system)
@@ -144,7 +144,13 @@ impl<'a> Renderer<'a> {
 
         // Build the Vello scene from the tree
         self.scene.reset();
-        self.render_node(&tree, root);
+        let mut portals = Vec::new();
+        self.render_node(&tree, root, &mut portals);
+
+        // Render portals last (on top of everything)
+        for portal_id in portals {
+            self.render_node_and_children(&tree, portal_id);
+        }
 
         // Render to surface
         let device_handle = &self.context.devices[self.surface.dev_id];
@@ -184,7 +190,7 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
-    fn render_node(&mut self, tree: &ElementTree, id: NodeId) {
+    fn render_node(&mut self, tree: &ElementTree, id: NodeId, portals: &mut Vec<NodeId>) {
         let node = tree.get_node(id);
         let layout = node.layout;
 
@@ -219,10 +225,60 @@ impl<'a> Renderer<'a> {
             }
         }
 
-        // Render children
+        // Render children, collecting portals
         let mut child = node.first_child;
         while let Some(child_id) = child {
-            self.render_node(tree, child_id);
+            let child_node = tree.get_node(child_id);
+            if let Some(style) = child_node.style() {
+                if style.position == Position::Portal {
+                    portals.push(child_id);
+                    child = child_node.next_sibling;
+                    continue;
+                }
+            }
+            self.render_node(tree, child_id, portals);
+            child = tree.get_node(child_id).next_sibling;
+        }
+    }
+
+    /// Render a node and all its children (used for portals, no portal collection).
+    fn render_node_and_children(&mut self, tree: &ElementTree, id: NodeId) {
+        let node = tree.get_node(id);
+        let layout = node.layout;
+
+        match &node.kind {
+            NodeKind::Element { style } => {
+                let color = style.bg_color.to_array();
+                if color[3] > 0.0 {
+                    let rect = Rect::new(
+                        layout.x as f64,
+                        layout.y as f64,
+                        (layout.x + layout.width) as f64,
+                        (layout.y + layout.height) as f64,
+                    );
+                    let vello_color =
+                        vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
+                    self.scene
+                        .fill(Fill::NonZero, Affine::IDENTITY, vello_color, None, &rect);
+                }
+            }
+            NodeKind::Text { content, style } => {
+                let text_color = style.text_color.to_array();
+                let font_size = style.font_size.unwrap_or(DEFAULT_FONT_SIZE);
+                self.render_text(
+                    content,
+                    layout.x,
+                    layout.y,
+                    layout.width,
+                    font_size,
+                    [text_color[0], text_color[1], text_color[2], text_color[3]],
+                );
+            }
+        }
+
+        let mut child = node.first_child;
+        while let Some(child_id) = child {
+            self.render_node_and_children(tree, child_id);
             child = tree.get_node(child_id).next_sibling;
         }
     }
@@ -335,8 +391,42 @@ impl<'a> Renderer<'a> {
             &mut measurer,
         );
 
-        // Perform depth-first search to find the deepest (frontmost) element at (x, y)
-        self.hit_test_node(&tree, tree.root, x, y)
+        // Collect portals first, then check them (they're rendered on top)
+        let mut portals = Vec::new();
+        self.collect_portals(&tree, tree.root, &mut portals);
+
+        // Check portals first (last rendered = frontmost)
+        for portal_id in portals.iter().rev() {
+            if let Some(handler) = self.hit_test_node_all(&tree, *portal_id, x, y) {
+                return Some(handler);
+            }
+        }
+
+        // Then check the normal tree
+        self.hit_test_node(&tree, tree.root, x, y, &portals)
+    }
+
+    fn collect_portals(
+        &self,
+        tree: &vitae_core::ElementTree,
+        node_id: vitae_core::NodeId,
+        portals: &mut Vec<vitae_core::NodeId>,
+    ) {
+        let node = tree.get_node(node_id);
+
+        let mut child = node.first_child;
+        while let Some(child_id) = child {
+            let child_node = tree.get_node(child_id);
+            if let Some(style) = child_node.style() {
+                if style.position == Position::Portal {
+                    portals.push(child_id);
+                    child = child_node.next_sibling;
+                    continue;
+                }
+            }
+            self.collect_portals(tree, child_id, portals);
+            child = tree.get_node(child_id).next_sibling;
+        }
     }
 
     fn hit_test_node(
@@ -345,6 +435,7 @@ impl<'a> Renderer<'a> {
         node_id: vitae_core::NodeId,
         x: f32,
         y: f32,
+        portals: &[vitae_core::NodeId],
     ) -> Option<vitae_core::EventHandler> {
         let node = tree.get_node(node_id);
         let layout = &node.layout;
@@ -359,16 +450,52 @@ impl<'a> Renderer<'a> {
             return None;
         }
 
-        // Check children first (they're on top)
+        // Check children first (they're on top), skipping portals
         let mut child = node.first_child;
         while let Some(child_id) = child {
-            if let Some(handler) = self.hit_test_node(tree, child_id, x, y) {
+            // Skip portals - they're handled separately
+            if portals.contains(&child_id) {
+                child = tree.get_node(child_id).next_sibling;
+                continue;
+            }
+            if let Some(handler) = self.hit_test_node(tree, child_id, x, y, portals) {
                 return Some(handler);
             }
             child = tree.get_node(child_id).next_sibling;
         }
 
         // If no child was hit, check if this node has a handler
+        node.on_event.clone()
+    }
+
+    /// Hit test a node and all children (used for portals, no skipping)
+    fn hit_test_node_all(
+        &self,
+        tree: &vitae_core::ElementTree,
+        node_id: vitae_core::NodeId,
+        x: f32,
+        y: f32,
+    ) -> Option<vitae_core::EventHandler> {
+        let node = tree.get_node(node_id);
+        let layout = &node.layout;
+
+        let in_bounds = x >= layout.x
+            && x <= layout.x + layout.width
+            && y >= layout.y
+            && y <= layout.y + layout.height;
+
+        if !in_bounds {
+            return None;
+        }
+
+        let mut child = node.first_child;
+        while let Some(child_id) = child {
+            if let Some(handler) = self.hit_test_node_all(tree, child_id, x, y) {
+                return Some(handler);
+            }
+            child = tree.get_node(child_id).next_sibling;
+        }
+
         node.on_event.clone()
     }
 

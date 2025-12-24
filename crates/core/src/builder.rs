@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::color::Color;
 use crate::element::{ElementTree, NodeKind};
 use crate::events::{Event, EventHandler, EventResult, MouseButton};
-use crate::style::{Direction, EdgeSizes, Length, Style};
+use crate::style::{Direction, EdgeSizes, Length, Position, Style};
 
 #[derive(Clone, Debug)]
 enum ElementKind {
@@ -117,6 +117,42 @@ impl ElementBuilder {
 
     pub fn m(mut self, size: Length) -> Self {
         self.style.margin = EdgeSizes::splat(size);
+        self
+    }
+
+    /// Set the position mode.
+    pub fn position(mut self, position: Position) -> Self {
+        self.style.position = position;
+        self
+    }
+
+    /// Set position to absolute.
+    pub fn absolute(mut self) -> Self {
+        self.style.position = Position::Absolute;
+        self
+    }
+
+    /// Set the top offset (for absolute positioning).
+    pub fn top(mut self, value: Length) -> Self {
+        self.style.top = Some(value);
+        self
+    }
+
+    /// Set the right offset (for absolute positioning).
+    pub fn right(mut self, value: Length) -> Self {
+        self.style.right = Some(value);
+        self
+    }
+
+    /// Set the bottom offset (for absolute positioning).
+    pub fn bottom(mut self, value: Length) -> Self {
+        self.style.bottom = Some(value);
+        self
+    }
+
+    /// Set the left offset (for absolute positioning).
+    pub fn left(mut self, value: Length) -> Self {
+        self.style.left = Some(value);
         self
     }
 

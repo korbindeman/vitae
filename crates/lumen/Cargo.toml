@@ -1,5 +1,5 @@
 [package]
-name = "enki_chess"
+name = "lumen"
 version.workspace = true
 edition.workspace = true
 

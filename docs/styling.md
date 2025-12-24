@@ -9,6 +9,16 @@
 
 `Length::Auto` is the default for dimensions.
 
+## Color Helpers
+
+| Method | Description |
+|--------|-------------|
+| `Color::rgb(r, g, b)` | Create color from RGB values (0-255) |
+| `Color::from_hex("#rrggbb")` | Create color from hex string |
+| `Color::new(r, g, b, a)` | Create color from RGBA floats (0.0-1.0) |
+
+Predefined constants: `WHITE`, `BLACK`, `GRAY`, `RED`, `GREEN`, `BLUE`, `YELLOW`, `CYAN`, `MAGENTA`, `TRANSPARENT`
+
 ## ElementBuilder Methods
 
 ### Layout Direction
@@ -36,6 +46,35 @@
 | `.p(size)` | Set padding on all sides |
 | `.m(size)` | Set margin on all sides |
 
+### Positioning
+
+| Method | Description |
+|--------|-------------|
+| `.position(pos)` | Set position mode (`Position::Relative`, `Position::Absolute`, or `Position::Portal`) |
+| `.absolute()` | Shorthand for `.position(Position::Absolute)` |
+| `.top(length)` | Set top offset (for absolute/portal positioning) |
+| `.right(length)` | Set right offset (for absolute/portal positioning) |
+| `.bottom(length)` | Set bottom offset (for absolute/portal positioning) |
+| `.left(length)` | Set left offset (for absolute/portal positioning) |
+
+**Position modes:**
+- `Relative` (default) - Element participates in normal flow
+- `Absolute` - Element is removed from flow, positioned relative to parent
+- `Portal` - Element is positioned relative to viewport, rendered on top of everything
+
+**Behavior:**
+- Absolute elements don't affect sibling layout
+- If both `left` and `right` are set with `Auto` width, the element stretches
+- If both `top` and `bottom` are set with `Auto` height, the element stretches
+
+### Element Constructors
+
+| Function | Description |
+|----------|-------------|
+| `div()` | Create a div element |
+| `text(content)` | Create a text element |
+| `portal()` | Create a portal element (positioned relative to viewport) |
+
 ### Appearance
 
 | Method | Description |
@@ -54,7 +93,9 @@
 
 | Method | Description |
 |--------|-------------|
-| `.on_click(handler)` | Attach a click event handler |
+| `.on_event(handler)` | Attach a generic event handler |
+| `.on_left_click(handler)` | Attach a left click handler |
+| `.on_right_click(handler)` | Attach a right click handler |
 
 ## Style Properties (not yet exposed via builder)
 

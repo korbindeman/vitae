@@ -38,6 +38,15 @@ pub enum Direction {
     Row,
 }
 
+#[derive(Clone, Debug, PartialEq, Copy, Default)]
+pub enum Position {
+    #[default]
+    Relative,
+    Absolute,
+    /// Positioned relative to the viewport, rendered on top of everything.
+    Portal,
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct EdgeSizes {
     pub top: Length,
@@ -82,6 +91,12 @@ pub struct Style {
     pub reverse: bool,
 
     pub font_size: Option<f32>,
+
+    pub position: Position,
+    pub top: Option<Length>,
+    pub right: Option<Length>,
+    pub bottom: Option<Length>,
+    pub left: Option<Length>,
 }
 
 impl Default for Style {
@@ -98,6 +113,11 @@ impl Default for Style {
             wrap: false,
             reverse: false,
             font_size: None,
+            position: Position::default(),
+            top: None,
+            right: None,
+            bottom: None,
+            left: None,
         }
     }
 }

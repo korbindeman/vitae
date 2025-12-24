@@ -66,6 +66,7 @@ These are the most important ones, see [docs/](docs/) for more.
 - [x] State management (model + signals)
 - [ ] Native platform features
 - [ ] Performance optimizations
+- [ ] Sound
 
 ## Acknowledgements
 

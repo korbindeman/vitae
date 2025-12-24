@@ -29,6 +29,19 @@ pub struct Piece {
     pub color: PlayerColor,
 }
 
+impl PieceType {
+    pub fn points(self) -> i32 {
+        match self {
+            PieceType::Pawn => 1,
+            PieceType::Knight => 3,
+            PieceType::Bishop => 3,
+            PieceType::Rook => 5,
+            PieceType::Queen => 9,
+            PieceType::King => 0,
+        }
+    }
+}
+
 impl Piece {
     pub fn unicode(&self) -> &'static str {
         match (self.color, self.piece_type) {

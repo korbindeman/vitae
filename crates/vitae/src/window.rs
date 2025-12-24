@@ -57,6 +57,7 @@ pub struct VitaeApp<'a, M: Clone> {
     model: M,
     view_fn: fn(&M) -> ElementBuilder,
     cursor_position: (f64, f64),
+    model_dirty: bool,
 }
 
 impl<'a, M: Clone + 'static> VitaeApp<'a, M> {
@@ -66,6 +67,7 @@ impl<'a, M: Clone + 'static> VitaeApp<'a, M> {
             model: initial_model,
             view_fn: view,
             cursor_position: (0.0, 0.0),
+            model_dirty: true,
         }
     }
 
@@ -107,11 +109,16 @@ impl<'a, M: Clone + 'static> ApplicationHandler for VitaeApp<'a, M> {
                 renderer.resize(physical_size);
             }
             WindowEvent::RedrawRequested => {
-                // Build tree separately to avoid borrow issues
-                let root = self.build_tree();
-                // Then use renderer
+                // Only rebuild tree if model changed
+                if self.model_dirty {
+                    let root = self.build_tree();
+                    if let Some(renderer) = self.renderer.as_mut() {
+                        renderer.set_root(root);
+                    }
+                    self.model_dirty = false;
+                }
+                // Render (uses cached tree if clean)
                 if let Some(renderer) = self.renderer.as_mut() {
-                    renderer.set_root(root);
                     renderer.render().unwrap();
                 }
             }
@@ -155,6 +162,8 @@ impl<'a, M: Clone + 'static> ApplicationHandler for VitaeApp<'a, M> {
                         );
                     }
 
+                    // Model was potentially modified
+                    self.model_dirty = true;
                     if let Some(renderer) = self.renderer.as_ref() {
                         renderer.window().request_redraw();
                     }
@@ -175,6 +184,8 @@ impl<'a, M: Clone + 'static> ApplicationHandler for VitaeApp<'a, M> {
                 let root_handler = renderer.get_root_handler();
                 if let Some(handler) = root_handler {
                     handler(&mut self.model, &vitae_event);
+                    // Model was potentially modified
+                    self.model_dirty = true;
                     if let Some(renderer) = self.renderer.as_ref() {
                         renderer.window().request_redraw();
                     }
@@ -188,10 +199,7 @@ impl<'a, M: Clone + 'static> ApplicationHandler for VitaeApp<'a, M> {
         if let Some(renderer) = self.renderer.as_ref() {
             // Check if any signal requested a redraw
             if take_redraw_request() {
-                renderer.window().request_redraw();
-            } else {
-                // Still request redraw for continuous rendering (for now)
-                // TODO: Make this opt-in for apps that need it
+                self.model_dirty = true;
                 renderer.window().request_redraw();
             }
         }

@@ -68,6 +68,8 @@ pub struct Renderer<'a> {
 
     // UI tree
     root_element: ElementBuilder,
+    cached_tree: Option<ElementTree>,
+    tree_dirty: bool,
 }
 
 impl<'a> Renderer<'a> {
@@ -105,6 +107,8 @@ impl<'a> Renderer<'a> {
             size,
             window,
             root_element,
+            cached_tree: None,
+            tree_dirty: true,
         }
     }
 
@@ -113,37 +117,59 @@ impl<'a> Renderer<'a> {
             self.size = new_size;
             self.context
                 .resize_surface(&mut self.surface, new_size.width, new_size.height);
+            // Invalidate tree since layout depends on window size
+            self.tree_dirty = true;
         }
     }
 
     /// Update the root element (used when model/signals change)
     pub fn set_root(&mut self, root_element: ElementBuilder) {
         self.root_element = root_element;
+        self.tree_dirty = true;
+    }
+
+    /// Mark the tree as dirty, forcing a rebuild on next render
+    pub fn invalidate(&mut self) {
+        self.tree_dirty = true;
+    }
+
+    /// Build and layout the tree if dirty, otherwise return cached tree
+    fn ensure_tree(&mut self) -> &ElementTree {
+        if self.tree_dirty || self.cached_tree.is_none() {
+            let mut tree = self.root_element.clone().build();
+            let root = tree.root;
+
+            let mut measurer = ParleyMeasurer {
+                font_cx: &mut self.font_cx,
+                layout_cx: &mut self.layout_cx,
+                font_size: DEFAULT_FONT_SIZE,
+            };
+
+            layout(
+                &mut tree,
+                root,
+                Constraints {
+                    max_w: self.size.width as f32,
+                    max_h: self.size.height as f32,
+                },
+                0.0,
+                0.0,
+                &mut measurer,
+            );
+
+            self.cached_tree = Some(tree);
+            self.tree_dirty = false;
+        }
+        self.cached_tree.as_ref().unwrap()
     }
 
     pub fn render(&mut self) -> Result<(), vello::wgpu::SurfaceError> {
-        // Build and layout the element tree
-        let mut tree = self.root_element.clone().build();
+        // Ensure tree is built and laid out (uses cache if clean)
+        self.ensure_tree();
+
+        // Take the tree temporarily to avoid borrow conflicts with scene mutation
+        let tree = self.cached_tree.take().unwrap();
         let root = tree.root;
-
-        // Create text measurer for layout
-        let mut measurer = ParleyMeasurer {
-            font_cx: &mut self.font_cx,
-            layout_cx: &mut self.layout_cx,
-            font_size: DEFAULT_FONT_SIZE,
-        };
-
-        layout(
-            &mut tree,
-            root,
-            Constraints {
-                max_w: self.size.width as f32,
-                max_h: self.size.height as f32,
-            },
-            0.0,
-            0.0,
-            &mut measurer,
-        );
 
         // Build the Vello scene from the tree
         self.scene.reset();
@@ -154,6 +180,9 @@ impl<'a> Renderer<'a> {
         for portal_id in portals {
             self.render_node_and_children(&tree, portal_id);
         }
+
+        // Put the tree back
+        self.cached_tree = Some(tree);
 
         // Render to surface
         let device_handle = &self.context.devices[self.surface.dev_id];
@@ -428,42 +457,23 @@ impl<'a> Renderer<'a> {
     /// Perform hit-testing to find which element was clicked
     /// Returns the event handler if an element with a click handler was hit
     pub fn hit_test(&mut self, x: f32, y: f32) -> Option<vitae_core::EventHandler> {
-        // Build and layout the tree to get correct positions
-        let mut tree = self.root_element.clone().build();
-        let root = tree.root;
-
-        // Run layout to calculate positions
-        let mut measurer = ParleyMeasurer {
-            font_cx: &mut self.font_cx,
-            layout_cx: &mut self.layout_cx,
-            font_size: DEFAULT_FONT_SIZE,
-        };
-
-        layout(
-            &mut tree,
-            root,
-            Constraints {
-                max_w: self.size.width as f32,
-                max_h: self.size.height as f32,
-            },
-            0.0,
-            0.0,
-            &mut measurer,
-        );
+        // Use cached tree (ensures it's built and laid out)
+        self.ensure_tree();
+        let tree = self.cached_tree.as_ref().unwrap();
 
         // Collect portals first, then check them (they're rendered on top)
         let mut portals = Vec::new();
-        self.collect_portals(&tree, tree.root, &mut portals);
+        self.collect_portals(tree, tree.root, &mut portals);
 
         // Check portals first (last rendered = frontmost)
         for portal_id in portals.iter().rev() {
-            if let Some(handler) = self.hit_test_node_all(&tree, *portal_id, x, y) {
+            if let Some(handler) = self.hit_test_node_all(tree, *portal_id, x, y) {
                 return Some(handler);
             }
         }
 
         // Then check the normal tree
-        self.hit_test_node(&tree, tree.root, x, y, &portals)
+        self.hit_test_node(tree, tree.root, x, y, &portals)
     }
 
     fn collect_portals(

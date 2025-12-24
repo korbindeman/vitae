@@ -160,11 +160,20 @@ Hit testing follows the same order as rendering but in reverse for overlapping e
 1. Check portals first (last rendered = frontmost)
 2. Check normal tree, with children before parents (deeper = frontmost)
 
+## Gap
+
+The `gap`, `gap_x`, and `gap_y` properties add fixed spacing between children:
+
+- `gap_x` - Horizontal gap (applies in Row direction)
+- `gap_y` - Vertical gap (applies in Column direction)
+- `gap` - Sets both `gap_x` and `gap_y`
+
+Gap is additive with `distribute` spacing. For example, using `.gap(px(10))` with `.distribute(Distribute::Between)` will add 10px of fixed spacing plus the distributed free space between children.
+
 ## Limitations
 
 Current limitations of the layout system:
 
-- No gap/spacing between flex children (use margin instead)
 - No flex-grow or flex-shrink
 - No wrapping (wrap property exists but is not implemented)
 - No min/max width/height constraints

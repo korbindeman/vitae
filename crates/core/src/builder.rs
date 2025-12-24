@@ -217,6 +217,25 @@ impl ElementBuilder {
         self
     }
 
+    /// Set the gap between children on both axes.
+    pub fn gap(mut self, length: Length) -> Self {
+        self.style.gap_x = length;
+        self.style.gap_y = length;
+        self
+    }
+
+    /// Set the horizontal gap between children.
+    pub fn gap_x(mut self, length: Length) -> Self {
+        self.style.gap_x = length;
+        self
+    }
+
+    /// Set the vertical gap between children.
+    pub fn gap_y(mut self, length: Length) -> Self {
+        self.style.gap_y = length;
+        self
+    }
+
     /// Add a child to the element.
     pub fn child(mut self, child: ElementBuilder) -> Self {
         self.children.push(child);

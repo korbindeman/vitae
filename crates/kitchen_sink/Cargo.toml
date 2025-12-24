@@ -1,0 +1,11 @@
+[package]
+name = "kitchen_sink"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "vitae_kitchen_sink"
+path = "src/main.rs"
+
+[dependencies]
+vitae = { path = "../vitae" }

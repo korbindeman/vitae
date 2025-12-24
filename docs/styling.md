@@ -66,6 +66,9 @@ Predefined constants: `WHITE`, `BLACK`, `GRAY`, `RED`, `GREEN`, `BLUE`, `YELLOW`
 |--------|-------------|
 | `.p(size)` | Set padding on all sides |
 | `.m(size)` | Set margin on all sides |
+| `.gap(length)` | Set gap between children on both axes |
+| `.gap_x(length)` | Set horizontal gap between children |
+| `.gap_y(length)` | Set vertical gap between children |
 
 ### Positioning
 

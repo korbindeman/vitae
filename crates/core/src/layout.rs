@@ -154,6 +154,12 @@ fn layout_inner<M: TextMeasurer>(
     let mut child_cursor_x = content_x;
     let mut child_cursor_y = content_y;
 
+    // Resolve gap for main axis
+    let main_gap_value = match dir {
+        Direction::Row => resolve_length(&style.gap_x, w - padding_left - padding_right),
+        Direction::Column => resolve_length(&style.gap_y, h - padding_top - padding_bottom),
+    };
+
     // First pass: layout children sequentially (at Start alignment positions)
     for child in &children {
         let child_style = tree.arena[*child].style().unwrap();
@@ -173,6 +179,14 @@ fn layout_inner<M: TextMeasurer>(
             max_w: w - padding_left - padding_right,
             max_h: h - padding_top - padding_bottom,
         };
+
+        // Add gap before this child (except for the first one)
+        if !flow_children.is_empty() {
+            match dir {
+                Direction::Row => child_cursor_x += main_gap_value,
+                Direction::Column => child_cursor_y += main_gap_value,
+            }
+        }
 
         let (cw, ch) = layout_inner(
             tree,
@@ -194,7 +208,7 @@ fn layout_inner<M: TextMeasurer>(
         }
     }
 
-    // Calculate totals
+    // Calculate totals (including gaps between children)
     let mut main_total: f32 = 0.0;
     let mut max_cross: f32 = 0.0;
     for &(cw, ch) in &child_sizes {
@@ -208,6 +222,10 @@ fn layout_inner<M: TextMeasurer>(
                 max_cross = max_cross.max(cw);
             }
         }
+    }
+    // Add gaps between children to main_total
+    if child_sizes.len() > 1 {
+        main_total += main_gap_value * (child_sizes.len() - 1) as f32;
     }
 
     // Determine container size
@@ -241,8 +259,8 @@ fn layout_inner<M: TextMeasurer>(
     let free_space = (main_size - main_total).max(0.0);
     let child_count = flow_children.len();
 
-    // Main-axis offset for all children
-    let (main_offset, main_gap) = match style.distribute {
+    // Main-axis offset for all children (distribute gap is additional spacing from free space)
+    let (main_offset, distribute_gap) = match style.distribute {
         Distribute::Start => (0.0, 0.0),
         Distribute::End => (free_space, 0.0),
         Distribute::Center => (free_space / 2.0, 0.0),
@@ -264,7 +282,7 @@ fn layout_inner<M: TextMeasurer>(
     };
 
     // Apply alignment offsets to each child
-    let mut accumulated_gap = 0.0;
+    let mut accumulated_distribute_gap = 0.0;
     for (i, &child_id) in flow_children.iter().enumerate() {
         let (cw, ch) = child_sizes[i];
 
@@ -283,9 +301,10 @@ fn layout_inner<M: TextMeasurer>(
         };
 
         // Calculate delta from where child was placed to where it should be
+        // (explicit gap was already applied during positioning, distribute_gap is additional)
         let (dx, dy) = match dir {
-            Direction::Row => (main_offset + accumulated_gap, cross_offset),
-            Direction::Column => (cross_offset, main_offset + accumulated_gap),
+            Direction::Row => (main_offset + accumulated_distribute_gap, cross_offset),
+            Direction::Column => (cross_offset, main_offset + accumulated_distribute_gap),
         };
 
         // Apply offset if non-zero
@@ -293,7 +312,7 @@ fn layout_inner<M: TextMeasurer>(
             offset_subtree(tree, child_id, dx, dy);
         }
 
-        accumulated_gap += main_gap;
+        accumulated_distribute_gap += distribute_gap;
     }
 
     let final_w = w + margin_left + margin_right;

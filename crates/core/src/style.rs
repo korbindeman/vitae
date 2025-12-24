@@ -115,6 +115,8 @@ pub struct Style {
     pub distribute: Distribute,
     pub wrap: bool,
     pub reverse: bool,
+    pub gap_x: Length,
+    pub gap_y: Length,
 
     pub font_size: Option<f32>,
 
@@ -140,6 +142,8 @@ impl Default for Style {
             text_color: Color::BLACK,
             wrap: false,
             reverse: false,
+            gap_x: Length::Px(0.0),
+            gap_y: Length::Px(0.0),
             font_size: None,
             position: Position::default(),
             top: None,

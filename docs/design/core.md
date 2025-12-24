@@ -432,6 +432,17 @@ App<M>
 
 The model ownership question ties into theme access, multi-window support, and component reusability. A comprehensive solution should address all these concerns together rather than piecemeal.
 
+### Update: Context as Prerequisite
+
+Extended features (routing, icons, theming) have identified Context as a prerequisite. Key decisions from [extended.md](./extended.md):
+
+- **Framework concerns live in context:** Routing history, theme, i18n - not in user model
+- **User state lives in model:** Business logic stays separate
+- **View signature changes:** `fn(&Model)` → `fn(&Model, &Context)` (or context accessed differently)
+- **Precedent set:** This separation is now a guiding principle
+
+This doesn't resolve the full Model Ownership question, but establishes that Context will exist and what belongs there.
+
 ---
 
 ## Implementation Order

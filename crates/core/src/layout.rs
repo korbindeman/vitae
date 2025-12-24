@@ -1,5 +1,5 @@
 use crate::element::{ElementTree, NodeId, NodeKind};
-use crate::style::{Direction, Length, Position};
+use crate::style::{Align, Direction, Distribute, Length, Position};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Layout {
@@ -78,17 +78,28 @@ fn layout_inner<M: TextMeasurer>(
     let style = node.style().unwrap().clone();
     let dir = style.direction;
 
-    // Check if this is a text node and measure it if needed
-    let (text_w, text_h) = match &tree.arena[id].kind {
+    // Get intrinsic size based on node type
+    let (intrinsic_w, intrinsic_h, intrinsic_aspect) = match &tree.arena[id].kind {
         NodeKind::Text { content, .. } => {
             let max_w = match style.width {
                 Length::Auto => Some(constraints.max_w),
                 Length::Px(px) => Some(px),
                 Length::Percent(p) => Some(p / 100.0 * constraints.max_w),
             };
-            measurer.measure(content, max_w)
+            let (w, h) = measurer.measure(content, max_w);
+            (w, h, None)
         }
-        _ => (0.0, 0.0),
+        NodeKind::Texture { texture, .. } => {
+            let w = texture.width() as f32;
+            let h = texture.height() as f32;
+            (w, h, Some(texture.aspect_ratio()))
+        }
+        NodeKind::Svg { svg, .. } => {
+            let w = svg.width();
+            let h = svg.height();
+            (w, h, Some(svg.aspect_ratio()))
+        }
+        _ => (0.0, 0.0, None),
     };
 
     let margin_left = style.margin.left.as_px();
@@ -101,39 +112,49 @@ fn layout_inner<M: TextMeasurer>(
     let padding_top = style.padding.top.as_px();
     let padding_bottom = style.padding.bottom.as_px();
 
+    // Determine if dimensions are explicitly set
+    let width_is_auto = matches!(style.width, Length::Auto);
+    let height_is_auto = matches!(style.height, Length::Auto);
+
     let mut w = match style.width {
         Length::Px(px) => px,
-        Length::Auto => text_w,
+        Length::Auto => intrinsic_w,
         Length::Percent(percent) => percent / 100.0 * constraints.max_w,
     };
 
     let mut h = match style.height {
         Length::Px(py) => py,
-        Length::Auto => text_h,
+        Length::Auto => intrinsic_h,
         Length::Percent(percent) => percent / 100.0 * constraints.max_h,
     };
 
-    match style.aspect_ratio {
-        Some(ratio) => {
-            if w == 0.0 {
-                w = h * ratio;
-            } else if h == 0.0 {
-                h = w / ratio;
-            }
+    // Handle aspect ratio - explicit style takes precedence, then intrinsic
+    let effective_aspect = style.aspect_ratio.or(intrinsic_aspect);
+    if let Some(ratio) = effective_aspect {
+        // For textures: if only one dimension is set, preserve aspect ratio
+        if width_is_auto && !height_is_auto && h > 0.0 {
+            w = h * ratio;
+        } else if height_is_auto && !width_is_auto && w > 0.0 {
+            h = w / ratio;
+        } else if w == 0.0 && h > 0.0 {
+            w = h * ratio;
+        } else if h == 0.0 && w > 0.0 {
+            h = w / ratio;
         }
-        None => {}
-    };
+    }
 
-    let mut max_cross: f32 = 0.0;
-    let mut main_total: f32 = 0.0;
-
-    let mut child_cursor_x = cursor_x + margin_left + padding_left;
-    let mut child_cursor_y = cursor_y + margin_top + padding_top;
+    let content_x = cursor_x + margin_left + padding_left;
+    let content_y = cursor_y + margin_top + padding_top;
 
     let children: Vec<NodeId> = tree.children(id).collect();
     let mut absolute_children: Vec<NodeId> = Vec::new();
+    let mut flow_children: Vec<NodeId> = Vec::new();
+    let mut child_sizes: Vec<(f32, f32)> = Vec::new();
 
-    // First pass: layout relative children in normal flow
+    let mut child_cursor_x = content_x;
+    let mut child_cursor_y = content_y;
+
+    // First pass: layout children sequentially (at Start alignment positions)
     for child in &children {
         let child_style = tree.arena[*child].style().unwrap();
         match child_style.position {
@@ -163,20 +184,33 @@ fn layout_inner<M: TextMeasurer>(
             portals,
         );
 
+        flow_children.push(*child);
+        child_sizes.push((cw, ch));
+
+        // Advance cursor for next child
+        match dir {
+            Direction::Row => child_cursor_x += cw,
+            Direction::Column => child_cursor_y += ch,
+        }
+    }
+
+    // Calculate totals
+    let mut main_total: f32 = 0.0;
+    let mut max_cross: f32 = 0.0;
+    for &(cw, ch) in &child_sizes {
         match dir {
             Direction::Row => {
-                child_cursor_x += cw;
                 main_total += cw;
                 max_cross = max_cross.max(ch);
             }
             Direction::Column => {
-                child_cursor_y += ch;
                 main_total += ch;
                 max_cross = max_cross.max(cw);
             }
         }
     }
 
+    // Determine container size
     match dir {
         Direction::Row => {
             if w == 0.0 {
@@ -194,6 +228,72 @@ fn layout_inner<M: TextMeasurer>(
                 h = main_total + padding_top + padding_bottom;
             }
         }
+    }
+
+    let content_w = w - padding_left - padding_right;
+    let content_h = h - padding_top - padding_bottom;
+
+    // Calculate alignment offsets and apply to children
+    let main_size = match dir {
+        Direction::Row => content_w,
+        Direction::Column => content_h,
+    };
+    let free_space = (main_size - main_total).max(0.0);
+    let child_count = flow_children.len();
+
+    // Main-axis offset for all children
+    let (main_offset, main_gap) = match style.distribute {
+        Distribute::Start => (0.0, 0.0),
+        Distribute::End => (free_space, 0.0),
+        Distribute::Center => (free_space / 2.0, 0.0),
+        Distribute::Between => {
+            if child_count > 1 {
+                (0.0, free_space / (child_count - 1) as f32)
+            } else {
+                (0.0, 0.0)
+            }
+        }
+        Distribute::Around => {
+            let gap = free_space / child_count as f32;
+            (gap / 2.0, gap)
+        }
+        Distribute::Evenly => {
+            let gap = free_space / (child_count + 1) as f32;
+            (gap, gap)
+        }
+    };
+
+    // Apply alignment offsets to each child
+    let mut accumulated_gap = 0.0;
+    for (i, &child_id) in flow_children.iter().enumerate() {
+        let (cw, ch) = child_sizes[i];
+
+        // Cross-axis alignment offset
+        let cross_offset = match dir {
+            Direction::Row => match style.align {
+                Align::Start => 0.0,
+                Align::End => content_h - ch,
+                Align::Center => (content_h - ch) / 2.0,
+            },
+            Direction::Column => match style.align {
+                Align::Start => 0.0,
+                Align::End => content_w - cw,
+                Align::Center => (content_w - cw) / 2.0,
+            },
+        };
+
+        // Calculate delta from where child was placed to where it should be
+        let (dx, dy) = match dir {
+            Direction::Row => (main_offset + accumulated_gap, cross_offset),
+            Direction::Column => (cross_offset, main_offset + accumulated_gap),
+        };
+
+        // Apply offset if non-zero
+        if dx != 0.0 || dy != 0.0 {
+            offset_subtree(tree, child_id, dx, dy);
+        }
+
+        accumulated_gap += main_gap;
     }
 
     let final_w = w + margin_left + margin_right;
@@ -286,38 +386,58 @@ fn layout_positioned<M: TextMeasurer>(
     let node = &tree.arena[id];
     let style = node.style().unwrap().clone();
 
-    // Measure text if this is a text node
-    let (text_w, text_h) = match &tree.arena[id].kind {
+    // Get intrinsic size based on node type
+    let (intrinsic_w, intrinsic_h, intrinsic_aspect) = match &tree.arena[id].kind {
         NodeKind::Text { content, .. } => {
             let max_w = match style.width {
                 Length::Auto => Some(parent_w),
                 Length::Px(px) => Some(px),
                 Length::Percent(p) => Some(p / 100.0 * parent_w),
             };
-            measurer.measure(content, max_w)
+            let (w, h) = measurer.measure(content, max_w);
+            (w, h, None)
         }
-        _ => (0.0, 0.0),
+        NodeKind::Texture { texture, .. } => {
+            let w = texture.width() as f32;
+            let h = texture.height() as f32;
+            (w, h, Some(texture.aspect_ratio()))
+        }
+        NodeKind::Svg { svg, .. } => {
+            let w = svg.width();
+            let h = svg.height();
+            (w, h, Some(svg.aspect_ratio()))
+        }
+        _ => (0.0, 0.0, None),
     };
+
+    // Determine if dimensions are explicitly set
+    let width_is_auto = matches!(style.width, Length::Auto);
+    let height_is_auto = matches!(style.height, Length::Auto);
 
     // Calculate width
     let mut w = match style.width {
         Length::Px(px) => px,
-        Length::Auto => text_w,
+        Length::Auto => intrinsic_w,
         Length::Percent(percent) => percent / 100.0 * parent_w,
     };
 
     // Calculate height
     let mut h = match style.height {
         Length::Px(px) => px,
-        Length::Auto => text_h,
+        Length::Auto => intrinsic_h,
         Length::Percent(percent) => percent / 100.0 * parent_h,
     };
 
-    // Handle aspect ratio
-    if let Some(ratio) = style.aspect_ratio {
-        if w == 0.0 {
+    // Handle aspect ratio - explicit style takes precedence, then intrinsic
+    let effective_aspect = style.aspect_ratio.or(intrinsic_aspect);
+    if let Some(ratio) = effective_aspect {
+        if width_is_auto && !height_is_auto && h > 0.0 {
             w = h * ratio;
-        } else if h == 0.0 {
+        } else if height_is_auto && !width_is_auto && w > 0.0 {
+            h = w / ratio;
+        } else if w == 0.0 && h > 0.0 {
+            w = h * ratio;
+        } else if h == 0.0 && w > 0.0 {
             h = w / ratio;
         }
     }
@@ -433,5 +553,16 @@ fn resolve_length(length: &Length, parent_size: f32) -> f32 {
         Length::Px(px) => *px,
         Length::Percent(p) => p / 100.0 * parent_size,
         Length::Auto => 0.0,
+    }
+}
+
+/// Recursively offset a node and all its descendants.
+fn offset_subtree(tree: &mut ElementTree, id: NodeId, dx: f32, dy: f32) {
+    tree.arena[id].layout.x += dx;
+    tree.arena[id].layout.y += dy;
+
+    let children: Vec<NodeId> = tree.children(id).collect();
+    for child in children {
+        offset_subtree(tree, child, dx, dy);
     }
 }

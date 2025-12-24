@@ -4,12 +4,16 @@ use std::rc::Rc;
 use crate::color::Color;
 use crate::element::{ElementTree, NodeKind};
 use crate::events::{Event, EventHandler, EventResult, MouseButton};
-use crate::style::{Direction, EdgeSizes, Length, Position, Style};
+use crate::style::{Align, Direction, Distribute, EdgeSizes, Length, Position, Style};
+use crate::svg_data::Svg;
+use crate::texture::Texture;
 
 #[derive(Clone, Debug)]
 enum ElementKind {
     Element,
     Text,
+    Texture,
+    Svg,
 }
 
 #[derive(Clone)]
@@ -17,6 +21,8 @@ pub struct ElementBuilder {
     node_type: ElementKind,
     style: Style,
     text: Option<String>,
+    texture: Option<Texture>,
+    svg: Option<Svg>,
     children: Vec<ElementBuilder>,
     on_event: Option<EventHandler>,
 }
@@ -28,6 +34,8 @@ impl std::fmt::Debug for ElementBuilder {
             .field("node_type", &self.node_type)
             .field("style", &self.style)
             .field("text", &self.text)
+            .field("texture", &self.texture)
+            .field("svg", &self.svg)
             .field("children", &self.children)
             .field("on_event", &self.on_event.as_ref().map(|_| "EventHandler"))
             .finish()
@@ -40,6 +48,8 @@ impl ElementBuilder {
             node_type: ElementKind::Element,
             style: Style::default(),
             text: None,
+            texture: None,
+            svg: None,
             children: Vec::new(),
             on_event: None,
         }
@@ -50,6 +60,32 @@ impl ElementBuilder {
             node_type: ElementKind::Text,
             style: Style::default(),
             text: Some(text),
+            texture: None,
+            svg: None,
+            children: Vec::new(),
+            on_event: None,
+        }
+    }
+
+    pub fn new_texture(texture: Texture) -> Self {
+        Self {
+            node_type: ElementKind::Texture,
+            style: Style::default(),
+            text: None,
+            texture: Some(texture),
+            svg: None,
+            children: Vec::new(),
+            on_event: None,
+        }
+    }
+
+    pub fn new_svg(svg: Svg) -> Self {
+        Self {
+            node_type: ElementKind::Svg,
+            style: Style::default(),
+            text: None,
+            texture: None,
+            svg: Some(svg),
             children: Vec::new(),
             on_event: None,
         }
@@ -70,6 +106,25 @@ impl ElementBuilder {
     /// Make the element render children in a direction.
     pub fn direction(mut self, dir: Direction) -> Self {
         self.style.direction = dir;
+        self
+    }
+
+    /// Set cross-axis alignment for children (CSS: align-items).
+    pub fn align(mut self, align: Align) -> Self {
+        self.style.align = align;
+        self
+    }
+
+    /// Set main-axis distribution of children (CSS: justify-content).
+    pub fn distribute(mut self, distribute: Distribute) -> Self {
+        self.style.distribute = distribute;
+        self
+    }
+
+    /// Center children on both axes.
+    pub fn center(mut self) -> Self {
+        self.style.align = Align::Center;
+        self.style.distribute = Distribute::Center;
         self
     }
 
@@ -277,6 +332,14 @@ impl ElementBuilder {
                     },
                     ElementKind::Text => NodeKind::Text {
                         content: child_builder.text.unwrap(),
+                        style: child_builder.style,
+                    },
+                    ElementKind::Texture => NodeKind::Texture {
+                        texture: child_builder.texture.unwrap(),
+                        style: child_builder.style,
+                    },
+                    ElementKind::Svg => NodeKind::Svg {
+                        svg: child_builder.svg.unwrap(),
                         style: child_builder.style,
                     },
                 };

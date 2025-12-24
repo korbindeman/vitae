@@ -18,6 +18,7 @@ vitae_render = { path = "crates/render" }
 
 # Rendering
 vello = "0.6"
+vello_svg = "0.8"
 parley = "0.7"
 winit = "0.30"
 
@@ -25,3 +26,4 @@ winit = "0.30"
 pollster = "0.4"
 glam = "0.30"
 generational-arena = "0.2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }

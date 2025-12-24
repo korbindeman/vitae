@@ -38,6 +38,30 @@ pub enum Direction {
     Row,
 }
 
+/// Cross-axis alignment for children (CSS: align-items).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Align {
+    #[default]
+    Start,
+    Center,
+    End,
+}
+
+/// Main-axis distribution of children (CSS: justify-content).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Distribute {
+    #[default]
+    Start,
+    Center,
+    End,
+    /// Equal space between children, no space at edges.
+    Between,
+    /// Equal space around each child (half-size space at edges).
+    Around,
+    /// Equal space between children and at edges.
+    Evenly,
+}
+
 #[derive(Clone, Debug, PartialEq, Copy, Default)]
 pub enum Position {
     #[default]
@@ -87,6 +111,8 @@ pub struct Style {
     pub aspect_ratio: Option<f32>,
 
     pub direction: Direction,
+    pub align: Align,
+    pub distribute: Distribute,
     pub wrap: bool,
     pub reverse: bool,
 
@@ -108,6 +134,8 @@ impl Default for Style {
             height: Length::Auto,
             aspect_ratio: None,
             direction: Direction::Column,
+            align: Align::default(),
+            distribute: Distribute::default(),
             bg_color: Color::TRANSPARENT,
             text_color: Color::BLACK,
             wrap: false,

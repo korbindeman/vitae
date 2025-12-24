@@ -3,6 +3,8 @@ use generational_arena::{Arena, Index};
 use crate::events::EventHandler;
 use crate::layout::Layout;
 use crate::style::Style;
+use crate::svg_data::Svg;
+use crate::texture::Texture;
 
 pub type NodeId = Index;
 
@@ -10,6 +12,8 @@ pub type NodeId = Index;
 pub enum NodeKind {
     Element { style: Style },
     Text { content: String, style: Style },
+    Texture { texture: Texture, style: Style },
+    Svg { svg: Svg, style: Style },
 }
 
 // Manual Debug implementation to handle EventHandler
@@ -20,6 +24,16 @@ impl std::fmt::Debug for NodeKind {
             NodeKind::Text { content, style } => f
                 .debug_struct("Text")
                 .field("content", content)
+                .field("style", style)
+                .finish(),
+            NodeKind::Texture { texture, style } => f
+                .debug_struct("Texture")
+                .field("texture", texture)
+                .field("style", style)
+                .finish(),
+            NodeKind::Svg { svg, style } => f
+                .debug_struct("Svg")
+                .field("svg", svg)
                 .field("style", style)
                 .finish(),
         }
@@ -86,10 +100,46 @@ impl Node {
         }
     }
 
+    fn new_texture(
+        texture: Texture,
+        style: Style,
+        parent: Option<NodeId>,
+        on_event: Option<EventHandler>,
+    ) -> Self {
+        Self {
+            parent,
+            first_child: None,
+            next_sibling: None,
+            kind: NodeKind::Texture { texture, style },
+            layout: Layout::default(),
+            dirty: true,
+            on_event,
+        }
+    }
+
+    fn new_svg(
+        svg: Svg,
+        style: Style,
+        parent: Option<NodeId>,
+        on_event: Option<EventHandler>,
+    ) -> Self {
+        Self {
+            parent,
+            first_child: None,
+            next_sibling: None,
+            kind: NodeKind::Svg { svg, style },
+            layout: Layout::default(),
+            dirty: true,
+            on_event,
+        }
+    }
+
     pub fn style(&self) -> Option<&Style> {
         match &self.kind {
             NodeKind::Element { style } => Some(style),
             NodeKind::Text { content: _, style } => Some(style),
+            NodeKind::Texture { texture: _, style } => Some(style),
+            NodeKind::Svg { svg: _, style } => Some(style),
         }
     }
 }
@@ -120,6 +170,14 @@ impl ElementTree {
             NodeKind::Text { content, style } => {
                 self.arena
                     .insert(Node::new_text(content, style, Some(parent), on_click))
+            }
+            NodeKind::Texture { texture, style } => {
+                self.arena
+                    .insert(Node::new_texture(texture, style, Some(parent), on_click))
+            }
+            NodeKind::Svg { svg, style } => {
+                self.arena
+                    .insert(Node::new_svg(svg, style, Some(parent), on_click))
             }
         };
 

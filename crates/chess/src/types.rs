@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum PieceType {
     King,
     Queen,
@@ -8,7 +8,7 @@ pub enum PieceType {
     Pawn,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum PlayerColor {
     White,
     Black,
@@ -44,6 +44,23 @@ impl Piece {
             (PlayerColor::Black, PieceType::Bishop) => "♝",
             (PlayerColor::Black, PieceType::Knight) => "♞",
             (PlayerColor::Black, PieceType::Pawn) => "♟",
+        }
+    }
+
+    pub fn svg_filename(&self) -> &'static str {
+        match (self.piece_type, self.color) {
+            (PieceType::King, PlayerColor::White) => "king-w.svg",
+            (PieceType::Queen, PlayerColor::White) => "queen-w.svg",
+            (PieceType::Rook, PlayerColor::White) => "rook-w.svg",
+            (PieceType::Bishop, PlayerColor::White) => "bishop-w.svg",
+            (PieceType::Knight, PlayerColor::White) => "knight-w.svg",
+            (PieceType::Pawn, PlayerColor::White) => "pawn-w.svg",
+            (PieceType::King, PlayerColor::Black) => "king-b.svg",
+            (PieceType::Queen, PlayerColor::Black) => "queen-b.svg",
+            (PieceType::Rook, PlayerColor::Black) => "rook-b.svg",
+            (PieceType::Bishop, PlayerColor::Black) => "bishop-b.svg",
+            (PieceType::Knight, PlayerColor::Black) => "knight-b.svg",
+            (PieceType::Pawn, PlayerColor::Black) => "pawn-b.svg",
         }
     }
 }

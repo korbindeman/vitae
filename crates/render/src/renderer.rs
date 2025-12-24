@@ -4,14 +4,17 @@ use std::sync::Arc;
 use parley::{FontContext, LayoutContext, LineHeight, StyleProperty};
 use pollster::FutureExt;
 use vello::kurbo::{Affine, Rect};
-use vello::peniko::{color::palette, Fill};
+use vello::peniko::{
+    color::palette, Blob, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat,
+};
 use vello::wgpu::{self, CommandEncoderDescriptor};
 use vello::{AaConfig, NormalizedCoord, RenderParams, RendererOptions, Scene};
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
 use vitae_core::{
-    layout, Constraints, ElementBuilder, ElementTree, NodeId, NodeKind, Position, TextMeasurer,
+    layout, Constraints, ElementBuilder, ElementTree, NodeId, NodeKind, Position, Svg,
+    TextMeasurer, Texture,
 };
 
 // Sensible defaults (TODO: replace with theme system)
@@ -223,6 +226,12 @@ impl<'a> Renderer<'a> {
                     [text_color[0], text_color[1], text_color[2], text_color[3]],
                 );
             }
+            NodeKind::Texture { texture, style: _ } => {
+                self.render_texture(texture, layout.x, layout.y, layout.width, layout.height);
+            }
+            NodeKind::Svg { svg, style: _ } => {
+                self.render_svg(svg, layout.x, layout.y, layout.width, layout.height);
+            }
         }
 
         // Render children, collecting portals
@@ -273,6 +282,12 @@ impl<'a> Renderer<'a> {
                     font_size,
                     [text_color[0], text_color[1], text_color[2], text_color[3]],
                 );
+            }
+            NodeKind::Texture { texture, style: _ } => {
+                self.render_texture(texture, layout.x, layout.y, layout.width, layout.height);
+            }
+            NodeKind::Svg { svg, style: _ } => {
+                self.render_svg(svg, layout.x, layout.y, layout.width, layout.height);
             }
         }
 
@@ -359,6 +374,51 @@ impl<'a> Renderer<'a> {
                 }
             }
         }
+    }
+
+    fn render_texture(&mut self, texture: &Texture, x: f32, y: f32, width: f32, height: f32) {
+        // Create peniko ImageData from texture data
+        let blob: Blob<u8> = texture.data().to_vec().into();
+        let image_data = ImageData {
+            data: blob,
+            format: ImageFormat::Rgba8,
+            alpha_type: ImageAlphaType::Alpha,
+            width: texture.width(),
+            height: texture.height(),
+        };
+        let image_brush = ImageBrush::new(image_data);
+
+        // Calculate scale to fit the layout dimensions
+        let scale_x = width / texture.width() as f32;
+        let scale_y = height / texture.height() as f32;
+
+        // Create transform: scale first, then translate to position
+        let transform = Affine::scale_non_uniform(scale_x as f64, scale_y as f64)
+            .then_translate((x as f64, y as f64).into());
+
+        self.scene.draw_image(image_brush.as_ref(), transform);
+    }
+
+    fn render_svg(&mut self, svg: &Svg, x: f32, y: f32, width: f32, height: f32) {
+        // Parse the SVG
+        let tree =
+            match vello_svg::usvg::Tree::from_str(svg.data(), &vello_svg::usvg::Options::default())
+            {
+                Ok(tree) => tree,
+                Err(_) => return,
+            };
+
+        // Calculate scale to fit the layout dimensions
+        let scale_x = width / svg.width();
+        let scale_y = height / svg.height();
+
+        // Create transform: scale first, then translate to position
+        let transform = Affine::scale_non_uniform(scale_x as f64, scale_y as f64)
+            .then_translate((x as f64, y as f64).into());
+
+        // Render the SVG to a scene and append it with transform
+        let svg_scene = vello_svg::render_tree(&tree);
+        self.scene.append(&svg_scene, Some(transform));
     }
 
     pub fn window(&self) -> &Window {

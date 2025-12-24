@@ -29,6 +29,33 @@ Each element has a direction that determines how children are arranged:
 - **Column** (default) - Children stack vertically, top to bottom
 - **Row** - Children stack horizontally, left to right
 
+## Alignment
+
+Children can be aligned within their parent using two properties:
+
+### Distribute (main axis)
+
+Controls how children are distributed along the main axis (horizontal for row, vertical for column). Equivalent to CSS `justify-content`.
+
+- `Start` (default) - Pack children at the start
+- `Center` - Center children
+- `End` - Pack children at the end
+- `Between` - Equal space between children, no space at edges
+- `Around` - Equal space around each child (half-size space at edges)
+- `Evenly` - Equal space between children and at edges
+
+### Align (cross axis)
+
+Controls how children are aligned on the cross axis (vertical for row, horizontal for column). Equivalent to CSS `align-items`.
+
+- `Start` (default) - Align to start
+- `Center` - Center on cross axis
+- `End` - Align to end
+
+### Center shorthand
+
+The `.center()` method sets both `align` and `distribute` to `Center`, centering children on both axes.
+
 ## Sizing
 
 ### Explicit Sizes
@@ -138,7 +165,6 @@ Hit testing follows the same order as rendering but in reverse for overlapping e
 Current limitations of the layout system:
 
 - No gap/spacing between flex children (use margin instead)
-- No justify-content or align-items (children start at top-left)
 - No flex-grow or flex-shrink
 - No wrapping (wrap property exists but is not implemented)
 - No min/max width/height constraints

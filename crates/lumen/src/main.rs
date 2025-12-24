@@ -7,6 +7,7 @@ const THUMBNAIL_SIZE: Length = Length::Px(80.0);
 struct Model {
     images: Vec<String>,
     selected: usize,
+    test_texture: Option<Texture>,
 }
 
 fn view(model: &Model) -> ElementBuilder {
@@ -24,10 +25,16 @@ fn image_preview(model: &Model) -> ElementBuilder {
         div()
             .size(FULL)
             .bg(Color::from_hex("#2a2a2a"))
-            .child(text(format!(
-                "Image: {}",
-                current.unwrap_or(&"(none)".to_string())
-            ))),
+            .center()
+            .child(if let Some(texture) = &model.test_texture {
+                // Display the loaded texture
+                img(texture).h(px(600.0))
+            } else {
+                text(format!(
+                    "Image: {}",
+                    current.unwrap_or(&"(none)".to_string())
+                ))
+            }),
     )
 }
 
@@ -73,6 +80,9 @@ fn thumbnail(index: usize, path: &str, selected: bool) -> ElementBuilder {
 }
 
 fn main() {
+    // Try to load a test texture
+    let test_texture = load_texture("test.jpg").ok();
+
     let model = Model {
         images: vec![
             "photo1.jpg".to_string(),
@@ -82,6 +92,7 @@ fn main() {
             "photo5.jpg".to_string(),
         ],
         selected: 0,
+        test_texture,
     };
 
     App::new(model, view).run();

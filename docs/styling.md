@@ -29,6 +29,27 @@ Predefined constants: `WHITE`, `BLACK`, `GRAY`, `RED`, `GREEN`, `BLUE`, `YELLOW`
 | `.col()` | Render children in a column (default) |
 | `.direction(dir)` | Set direction with `Direction::Row` or `Direction::Column` |
 
+### Alignment
+
+| Method | Description |
+|--------|-------------|
+| `.align(align)` | Set cross-axis alignment (CSS: `align-items`) |
+| `.distribute(dist)` | Set main-axis distribution (CSS: `justify-content`) |
+| `.center()` | Center children on both axes |
+
+**Align values** (`Align`):
+- `Start` (default) - Align to start of cross axis
+- `Center` - Center on cross axis
+- `End` - Align to end of cross axis
+
+**Distribute values** (`Distribute`):
+- `Start` (default) - Pack children at start of main axis
+- `Center` - Center children on main axis
+- `End` - Pack children at end of main axis
+- `Between` - Equal space between children, no space at edges
+- `Around` - Equal space around each child (half-size space at edges)
+- `Evenly` - Equal space between children and at edges
+
 ### Sizing
 
 | Method | Description |

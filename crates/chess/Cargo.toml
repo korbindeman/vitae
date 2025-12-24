@@ -1,5 +1,5 @@
 [package]
-name = "enki_chess"
+name = "vitae_chess"
 version.workspace = true
 edition.workspace = true
 

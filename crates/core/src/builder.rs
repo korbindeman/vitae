@@ -4,7 +4,10 @@ use std::rc::Rc;
 use crate::color::Color;
 use crate::element::{ElementTree, NodeKind};
 use crate::events::{Event, EventHandler, EventResult, MouseButton};
-use crate::style::{Align, Direction, Distribute, EdgeSizes, Length, Position, Style};
+use crate::style::{
+    Align, Border, BorderEdge, BorderRadius, Direction, Distribute, EdgeSizes, Length, Position,
+    Style,
+};
 use crate::svg_data::Svg;
 use crate::texture::Texture;
 
@@ -131,6 +134,72 @@ impl ElementBuilder {
     /// The background color of the element.
     pub fn bg(mut self, color: Color) -> Self {
         self.style.bg_color = color;
+        self
+    }
+
+    /// Set border on all sides.
+    pub fn border(mut self, width: f32, color: Color) -> Self {
+        self.style.border = Border::all(width, color);
+        self
+    }
+
+    /// Set top border.
+    pub fn border_t(mut self, width: f32, color: Color) -> Self {
+        self.style.border.top = BorderEdge::new(width, color);
+        self
+    }
+
+    /// Set right border.
+    pub fn border_r(mut self, width: f32, color: Color) -> Self {
+        self.style.border.right = BorderEdge::new(width, color);
+        self
+    }
+
+    /// Set bottom border.
+    pub fn border_b(mut self, width: f32, color: Color) -> Self {
+        self.style.border.bottom = BorderEdge::new(width, color);
+        self
+    }
+
+    /// Set left border.
+    pub fn border_l(mut self, width: f32, color: Color) -> Self {
+        self.style.border.left = BorderEdge::new(width, color);
+        self
+    }
+
+    /// Set border radius for all corners.
+    pub fn radius(mut self, radius: f32) -> Self {
+        self.style.radius = BorderRadius::all(radius);
+        self
+    }
+
+    /// Set top-left border radius.
+    pub fn radius_tl(mut self, radius: f32) -> Self {
+        self.style.radius.top_left = radius;
+        self
+    }
+
+    /// Set top-right border radius.
+    pub fn radius_tr(mut self, radius: f32) -> Self {
+        self.style.radius.top_right = radius;
+        self
+    }
+
+    /// Set bottom-right border radius.
+    pub fn radius_br(mut self, radius: f32) -> Self {
+        self.style.radius.bottom_right = radius;
+        self
+    }
+
+    /// Set bottom-left border radius.
+    pub fn radius_bl(mut self, radius: f32) -> Self {
+        self.style.radius.bottom_left = radius;
+        self
+    }
+
+    /// Make fully rounded (50% of smaller dimension).
+    pub fn rounded(mut self) -> Self {
+        self.style.radius = BorderRadius::full();
         self
     }
 

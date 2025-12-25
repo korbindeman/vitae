@@ -80,15 +80,19 @@ If `aspect_ratio` is set and one dimension is zero:
 
 ## Box Model
 
-Each element has margin and padding:
+Each element has margin, border, and padding:
 
 ```
 ┌─────────────────────────────────┐
 │           margin                │
 │   ┌─────────────────────────┐   │
-│   │        padding          │   │
+│   │         border          │   │
 │   │   ┌─────────────────┐   │   │
-│   │   │     content     │   │   │
+│   │   │     padding     │   │   │
+│   │   │   ┌─────────┐   │   │   │
+│   │   │   │ content │   │   │   │
+│   │   │   └─────────┘   │   │   │
+│   │   │                 │   │   │
 │   │   └─────────────────┘   │   │
 │   │                         │   │
 │   └─────────────────────────┘   │
@@ -97,9 +101,12 @@ Each element has margin and padding:
 ```
 
 - **Margin** - Space outside the element, affects position of subsequent siblings
+- **Border** - Visual border drawn on the element edge (does not affect layout)
 - **Padding** - Space inside the element, affects position of children
 
 The returned size from layout includes margins. The stored `Layout` dimensions do not include margins (just the border box).
+
+Note: Borders are purely visual and do not contribute to element size or layout calculations. Border radius clips the background even without a visible border.
 
 ## Layout Algorithm
 

@@ -1,6 +1,6 @@
 use glam::Vec4;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Color(Vec4);
 
 impl Color {

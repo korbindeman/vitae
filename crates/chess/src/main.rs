@@ -766,7 +766,7 @@ fn view(game: &ChessGame) -> ElementBuilder {
                         // Empty square - show dot
                         square = square
                             .center()
-                            .child(div().bg(Color::rgb(50, 50, 50)).size(pc(30.0)));
+                            .child(div().rounded().bg(Color::rgb(50, 50, 50)).size(pc(30.0)));
                     }
 
                     square.on_left_click(move |g: &mut ChessGame| g.select_square(row, col))

@@ -40,9 +40,9 @@ fn image_preview(model: &Model) -> ElementBuilder {
 
 fn filmstrip_portal(model: &Model) -> ElementBuilder {
     portal()
-        .left(px(0.0))
-        .right(px(0.0))
-        .bottom(px(0.0))
+        .left(MD)
+        .right(MD)
+        .bottom(MD)
         .h(FILMSTRIP_HEIGHT)
         .child(filmstrip(model))
 }
@@ -53,6 +53,7 @@ fn filmstrip(model: &Model) -> ElementBuilder {
         .row()
         .bg(Color::from_hex("#333333"))
         .p(SM)
+        .gap(SM)
         .children(
             model
                 .images
@@ -70,9 +71,9 @@ fn thumbnail(index: usize, path: &str, selected: bool) -> ElementBuilder {
     };
 
     div()
-        .size(THUMBNAIL_SIZE)
+        .h(FULL)
+        .square()
         .bg(bg)
-        .m(Length::Px(4.0))
         .child(text(format!("{}", index + 1)))
         .on_left_click(move |m: &mut Model| {
             m.selected = index;

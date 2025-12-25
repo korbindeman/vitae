@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use parley::{FontContext, LayoutContext, LineHeight, StyleProperty};
 use pollster::FutureExt;
-use vello::kurbo::{Affine, Rect};
+use vello::kurbo::{Affine, Cap, Join, Rect, RoundedRect, RoundedRectRadii, Stroke};
 use vello::peniko::{
     color::palette, Blob, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat,
 };
@@ -228,20 +228,7 @@ impl<'a> Renderer<'a> {
 
         match &node.kind {
             NodeKind::Element { style } => {
-                let color = style.bg_color.to_array();
-                // Skip fully transparent elements
-                if color[3] > 0.0 {
-                    let rect = Rect::new(
-                        layout.x as f64,
-                        layout.y as f64,
-                        (layout.x + layout.width) as f64,
-                        (layout.y + layout.height) as f64,
-                    );
-                    let vello_color =
-                        vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
-                    self.scene
-                        .fill(Fill::NonZero, Affine::IDENTITY, vello_color, None, &rect);
-                }
+                self.render_element_box(style, layout.x, layout.y, layout.width, layout.height);
             }
             NodeKind::Text { content, style } => {
                 let text_color = style.text_color.to_array();
@@ -286,19 +273,7 @@ impl<'a> Renderer<'a> {
 
         match &node.kind {
             NodeKind::Element { style } => {
-                let color = style.bg_color.to_array();
-                if color[3] > 0.0 {
-                    let rect = Rect::new(
-                        layout.x as f64,
-                        layout.y as f64,
-                        (layout.x + layout.width) as f64,
-                        (layout.y + layout.height) as f64,
-                    );
-                    let vello_color =
-                        vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
-                    self.scene
-                        .fill(Fill::NonZero, Affine::IDENTITY, vello_color, None, &rect);
-                }
+                self.render_element_box(style, layout.x, layout.y, layout.width, layout.height);
             }
             NodeKind::Text { content, style } => {
                 let text_color = style.text_color.to_array();
@@ -324,6 +299,150 @@ impl<'a> Renderer<'a> {
         while let Some(child_id) = child {
             self.render_node_and_children(tree, child_id);
             child = tree.get_node(child_id).next_sibling;
+        }
+    }
+
+    /// Render an element's background and border.
+    fn render_element_box(
+        &mut self,
+        style: &vitae_core::Style,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+    ) {
+        let rect = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
+
+        // Resolve border radius
+        let (tl, tr, br, bl) = style.radius.resolve(width, height);
+        let has_radius = tl > 0.0 || tr > 0.0 || br > 0.0 || bl > 0.0;
+
+        // Draw background
+        let bg_color = style.bg_color.to_array();
+        if bg_color[3] > 0.0 {
+            let vello_color =
+                vello::peniko::Color::new([bg_color[0], bg_color[1], bg_color[2], bg_color[3]]);
+
+            if has_radius {
+                let rounded_rect = RoundedRect::from_rect(
+                    rect,
+                    RoundedRectRadii::new(tl as f64, tr as f64, br as f64, bl as f64),
+                );
+                self.scene.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    vello_color,
+                    None,
+                    &rounded_rect,
+                );
+            } else {
+                self.scene
+                    .fill(Fill::NonZero, Affine::IDENTITY, vello_color, None, &rect);
+            }
+        }
+
+        // Draw borders
+        let border = &style.border;
+
+        // Check if all borders are uniform (same width and color)
+        let uniform_border = border.top.width == border.right.width
+            && border.right.width == border.bottom.width
+            && border.bottom.width == border.left.width
+            && border.top.color.to_array() == border.right.color.to_array()
+            && border.right.color.to_array() == border.bottom.color.to_array()
+            && border.bottom.color.to_array() == border.left.color.to_array();
+
+        if uniform_border && border.top.width > 0.0 {
+            // Draw uniform border as a single stroke
+            let border_color = border.top.color.to_array();
+            let vello_color = vello::peniko::Color::new([
+                border_color[0],
+                border_color[1],
+                border_color[2],
+                border_color[3],
+            ]);
+            let stroke = Stroke::new(border.top.width as f64)
+                .with_caps(Cap::Butt)
+                .with_join(Join::Miter);
+
+            if has_radius {
+                let rounded_rect = RoundedRect::from_rect(
+                    rect,
+                    RoundedRectRadii::new(tl as f64, tr as f64, br as f64, bl as f64),
+                );
+                self.scene
+                    .stroke(&stroke, Affine::IDENTITY, vello_color, None, &rounded_rect);
+            } else {
+                self.scene
+                    .stroke(&stroke, Affine::IDENTITY, vello_color, None, &rect);
+            }
+        } else {
+            // Draw individual borders
+            self.render_individual_borders(style, x, y, width, height);
+        }
+    }
+
+    /// Render individual borders when they have different widths or colors.
+    fn render_individual_borders(
+        &mut self,
+        style: &vitae_core::Style,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+    ) {
+        use vello::kurbo::Line;
+
+        let border = &style.border;
+
+        // Top border
+        if border.top.width > 0.0 {
+            let color = border.top.color.to_array();
+            let vello_color = vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
+            let stroke = Stroke::new(border.top.width as f64).with_caps(Cap::Butt);
+            let y_pos = y + border.top.width / 2.0;
+            let line = Line::new((x as f64, y_pos as f64), ((x + width) as f64, y_pos as f64));
+            self.scene
+                .stroke(&stroke, Affine::IDENTITY, vello_color, None, &line);
+        }
+
+        // Right border
+        if border.right.width > 0.0 {
+            let color = border.right.color.to_array();
+            let vello_color = vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
+            let stroke = Stroke::new(border.right.width as f64).with_caps(Cap::Butt);
+            let x_pos = x + width - border.right.width / 2.0;
+            let line = Line::new(
+                (x_pos as f64, y as f64),
+                (x_pos as f64, (y + height) as f64),
+            );
+            self.scene
+                .stroke(&stroke, Affine::IDENTITY, vello_color, None, &line);
+        }
+
+        // Bottom border
+        if border.bottom.width > 0.0 {
+            let color = border.bottom.color.to_array();
+            let vello_color = vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
+            let stroke = Stroke::new(border.bottom.width as f64).with_caps(Cap::Butt);
+            let y_pos = y + height - border.bottom.width / 2.0;
+            let line = Line::new((x as f64, y_pos as f64), ((x + width) as f64, y_pos as f64));
+            self.scene
+                .stroke(&stroke, Affine::IDENTITY, vello_color, None, &line);
+        }
+
+        // Left border
+        if border.left.width > 0.0 {
+            let color = border.left.color.to_array();
+            let vello_color = vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
+            let stroke = Stroke::new(border.left.width as f64).with_caps(Cap::Butt);
+            let x_pos = x + border.left.width / 2.0;
+            let line = Line::new(
+                (x_pos as f64, y as f64),
+                (x_pos as f64, (y + height) as f64),
+            );
+            self.scene
+                .stroke(&stroke, Affine::IDENTITY, vello_color, None, &line);
         }
     }
 

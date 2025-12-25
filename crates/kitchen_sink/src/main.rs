@@ -69,7 +69,7 @@ fn nav_button(label: &str) -> ElementBuilder {
 }
 
 fn sidebar(model: &Model) -> ElementBuilder {
-    let tabs = ["Layout", "Colors", "Alignment", "Interactive"];
+    let tabs = ["Layout", "Colors", "Alignment", "Borders", "Interactive"];
 
     div()
         .w(px(200.0))
@@ -100,7 +100,8 @@ fn main_content(model: &Model) -> ElementBuilder {
         0 => layout_demo(),
         1 => colors_demo(),
         2 => alignment_demo(),
-        3 => interactive_demo(model),
+        3 => borders_demo(),
+        4 => interactive_demo(model),
         _ => div(),
     };
 
@@ -510,6 +511,218 @@ fn distribute_box(label: &str, distribute: Distribute) -> ElementBuilder {
         )
         .child(small_box("#3498db"))
         .child(small_box("#2ecc71"))
+}
+
+// ============================================================================
+// Borders Demo
+// ============================================================================
+
+fn borders_demo() -> ElementBuilder {
+    div()
+        .size(FULL)
+        .col()
+        .gap(MD)
+        .child(section_title("Border & Radius Features"))
+        // Uniform border
+        .child(
+            div()
+                .w(FULL)
+                .col()
+                .gap(SM)
+                .child(text("Uniform Border"))
+                .child(
+                    div()
+                        .row()
+                        .gap(MD)
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#ecf0f1"))
+                                .border(2.0, Color::from_hex("#e74c3c"))
+                                .center()
+                                .child(text("2px")),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#ecf0f1"))
+                                .border(4.0, Color::from_hex("#3498db"))
+                                .center()
+                                .child(text("4px")),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#ecf0f1"))
+                                .border(8.0, Color::from_hex("#2ecc71"))
+                                .center()
+                                .child(text("8px")),
+                        ),
+                ),
+        )
+        // Per-side borders
+        .child(
+            div()
+                .w(FULL)
+                .col()
+                .gap(SM)
+                .child(text("Per-side Borders"))
+                .child(
+                    div()
+                        .row()
+                        .gap(MD)
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#ecf0f1"))
+                                .border_t(4.0, Color::from_hex("#e74c3c"))
+                                .center()
+                                .child(text("top")),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#ecf0f1"))
+                                .border_b(4.0, Color::from_hex("#3498db"))
+                                .center()
+                                .child(text("bottom")),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#ecf0f1"))
+                                .border_l(4.0, Color::from_hex("#2ecc71"))
+                                .border_r(4.0, Color::from_hex("#9b59b6"))
+                                .center()
+                                .child(text("L + R")),
+                        ),
+                ),
+        )
+        // Border radius
+        .child(
+            div()
+                .w(FULL)
+                .col()
+                .gap(SM)
+                .child(text("Border Radius"))
+                .child(
+                    div()
+                        .row()
+                        .gap(MD)
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#3498db"))
+                                .radius(8.0)
+                                .center()
+                                .child(text("8px").bg(WHITE)),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#e74c3c"))
+                                .radius(16.0)
+                                .center()
+                                .child(text("16px").bg(WHITE)),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#2ecc71"))
+                                .radius(32.0)
+                                .center()
+                                .child(text("32px").bg(WHITE)),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#9b59b6"))
+                                .rounded()
+                                .center()
+                                .child(text("full").bg(WHITE)),
+                        ),
+                ),
+        )
+        // Per-corner radius
+        .child(
+            div()
+                .w(FULL)
+                .col()
+                .gap(SM)
+                .child(text("Per-corner Radius"))
+                .child(
+                    div()
+                        .row()
+                        .gap(MD)
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#f39c12"))
+                                .radius_tl(20.0)
+                                .center()
+                                .child(text("TL").bg(WHITE)),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#1abc9c"))
+                                .radius_tr(20.0)
+                                .radius_bl(20.0)
+                                .center()
+                                .child(text("TR+BL").bg(WHITE)),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#e67e22"))
+                                .radius_tl(30.0)
+                                .radius_br(30.0)
+                                .center()
+                                .child(text("TL+BR").bg(WHITE)),
+                        ),
+                ),
+        )
+        // Border + radius combined
+        .child(
+            div()
+                .w(FULL)
+                .col()
+                .gap(SM)
+                .child(text("Border + Radius Combined"))
+                .child(
+                    div()
+                        .row()
+                        .gap(MD)
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#ecf0f1"))
+                                .border(3.0, Color::from_hex("#e74c3c"))
+                                .radius(12.0)
+                                .center()
+                                .child(text("card")),
+                        )
+                        .child(
+                            div()
+                                .size(px(80.0))
+                                .bg(Color::from_hex("#3498db"))
+                                .border(4.0, Color::from_hex("#2c3e50"))
+                                .rounded()
+                                .center()
+                                .child(text("pill").bg(WHITE)),
+                        )
+                        .child(
+                            div()
+                                .w(px(120.0))
+                                .h(px(40.0))
+                                .bg(Color::from_hex("#2ecc71"))
+                                .border(2.0, Color::from_hex("#27ae60"))
+                                .radius(8.0)
+                                .center()
+                                .child(text("Button").bg(WHITE)),
+                        ),
+                ),
+        )
 }
 
 // ============================================================================

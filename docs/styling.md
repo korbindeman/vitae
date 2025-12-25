@@ -106,6 +106,29 @@ Predefined constants: `WHITE`, `BLACK`, `GRAY`, `RED`, `GREEN`, `BLUE`, `YELLOW`
 | `.bg(color)` | Set background color |
 | `.font_size(size)` | Set font size for text elements |
 
+### Borders
+
+| Method | Description |
+|--------|-------------|
+| `.border(width, color)` | Set border on all sides |
+| `.border_t(width, color)` | Set top border |
+| `.border_r(width, color)` | Set right border |
+| `.border_b(width, color)` | Set bottom border |
+| `.border_l(width, color)` | Set left border |
+
+### Border Radius
+
+| Method | Description |
+|--------|-------------|
+| `.radius(radius)` | Set border radius for all corners |
+| `.radius_tl(radius)` | Set top-left corner radius |
+| `.radius_tr(radius)` | Set top-right corner radius |
+| `.radius_br(radius)` | Set bottom-right corner radius |
+| `.radius_bl(radius)` | Set bottom-left corner radius |
+| `.rounded()` | Make fully rounded (50% of smaller dimension) |
+
+Border radius clips the background even without a border. Borders are drawn on top of the background.
+
 ### Children
 
 | Method | Description |

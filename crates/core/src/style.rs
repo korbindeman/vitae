@@ -1,5 +1,92 @@
 use crate::color::Color;
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BorderEdge {
+    pub width: f32,
+    pub color: Color,
+}
+
+impl BorderEdge {
+    pub fn new(width: f32, color: Color) -> Self {
+        Self { width, color }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Border {
+    pub top: BorderEdge,
+    pub right: BorderEdge,
+    pub bottom: BorderEdge,
+    pub left: BorderEdge,
+}
+
+impl Border {
+    pub fn all(width: f32, color: Color) -> Self {
+        let edge = BorderEdge::new(width, color);
+        Self {
+            top: edge,
+            right: edge,
+            bottom: edge,
+            left: edge,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BorderRadius {
+    pub top_left: f32,
+    pub top_right: f32,
+    pub bottom_right: f32,
+    pub bottom_left: f32,
+    /// When true, radius is computed as 50% of the smaller dimension (full roundness).
+    pub full: bool,
+}
+
+impl BorderRadius {
+    pub fn all(radius: f32) -> Self {
+        Self {
+            top_left: radius,
+            top_right: radius,
+            bottom_right: radius,
+            bottom_left: radius,
+            full: false,
+        }
+    }
+
+    /// Creates a fully rounded border (50% of smaller dimension).
+    pub fn full() -> Self {
+        Self {
+            top_left: 0.0,
+            top_right: 0.0,
+            bottom_right: 0.0,
+            bottom_left: 0.0,
+            full: true,
+        }
+    }
+
+    /// Returns true if all corners have the same radius.
+    pub fn is_uniform(&self) -> bool {
+        self.top_left == self.top_right
+            && self.top_right == self.bottom_right
+            && self.bottom_right == self.bottom_left
+    }
+
+    /// Resolve the actual radii given the element dimensions.
+    pub fn resolve(&self, width: f32, height: f32) -> (f32, f32, f32, f32) {
+        if self.full {
+            let r = width.min(height) / 2.0;
+            (r, r, r, r)
+        } else {
+            (
+                self.top_left,
+                self.top_right,
+                self.bottom_right,
+                self.bottom_left,
+            )
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Length {
     Percent(f32),
@@ -106,6 +193,9 @@ pub struct Style {
     pub bg_color: Color,
     pub text_color: Color,
 
+    pub border: Border,
+    pub radius: BorderRadius,
+
     pub width: Length,
     pub height: Length,
     pub aspect_ratio: Option<f32>,
@@ -140,6 +230,8 @@ impl Default for Style {
             distribute: Distribute::default(),
             bg_color: Color::TRANSPARENT,
             text_color: Color::BLACK,
+            border: Border::default(),
+            radius: BorderRadius::default(),
             wrap: false,
             reverse: false,
             gap_x: Length::Px(0.0),

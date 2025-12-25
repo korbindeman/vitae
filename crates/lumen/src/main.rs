@@ -52,8 +52,10 @@ fn filmstrip(model: &Model) -> ElementBuilder {
         .size(FULL)
         .row()
         .bg(Color::from_hex("#333333"))
-        .p(SM)
-        .gap(SM)
+        .border(2.0, Color::from_hex("#4a4a4a"))
+        .radius(16.0)
+        .p(MD)
+        .gap(MD)
         .children(
             model
                 .images

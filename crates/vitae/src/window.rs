@@ -58,6 +58,7 @@ pub struct VitaeApp<'a, M: Clone> {
     view_fn: fn(&M) -> ElementBuilder,
     cursor_position: (f64, f64),
     model_dirty: bool,
+    mouse_down_position: Option<(f32, f32)>,
 }
 
 impl<'a, M: Clone + 'static> VitaeApp<'a, M> {
@@ -68,6 +69,7 @@ impl<'a, M: Clone + 'static> VitaeApp<'a, M> {
             view_fn: view,
             cursor_position: (0.0, 0.0),
             model_dirty: true,
+            mouse_down_position: None,
         }
     }
 
@@ -134,7 +136,8 @@ impl<'a, M: Clone + 'static> ApplicationHandler for VitaeApp<'a, M> {
                 };
 
                 let (x, y) = self.cursor_position;
-                let handler = renderer.hit_test(x as f32, y as f32);
+                let (x, y) = (x as f32, y as f32);
+                let handler = renderer.hit_test(x, y);
 
                 if let Some(handler) = handler {
                     let event = match state {
@@ -147,19 +150,33 @@ impl<'a, M: Clone + 'static> ApplicationHandler for VitaeApp<'a, M> {
                     };
                     handler(&mut self.model, &event);
 
-                    // Also fire Click on mouse up (left or right)
-                    if matches!(state, ElementState::Released)
-                        && matches!(
-                            vitae_button,
-                            VitaeMouseButton::Left | VitaeMouseButton::Right
-                        )
-                    {
-                        handler(
-                            &mut self.model,
-                            &Event::Click {
-                                button: vitae_button,
-                            },
-                        );
+                    match state {
+                        ElementState::Pressed => {
+                            self.mouse_down_position = Some((x, y));
+                        }
+                        ElementState::Released => {
+                            // Only fire Click if mouse-down occurred on the same element
+                            if let Some((down_x, down_y)) = self.mouse_down_position {
+                                let down_handler = renderer.hit_test(down_x, down_y);
+                                if down_handler.is_some() {
+                                    // Check if both positions hit the same handler by comparing pointer addresses
+                                    let same_element = std::ptr::eq(
+                                        handler.as_ref() as *const _ as *const (),
+                                        down_handler.as_ref().unwrap().as_ref() as *const _
+                                            as *const (),
+                                    );
+                                    if same_element {
+                                        handler(
+                                            &mut self.model,
+                                            &Event::Click {
+                                                button: vitae_button,
+                                            },
+                                        );
+                                    }
+                                }
+                            }
+                            self.mouse_down_position = None;
+                        }
                     }
 
                     // Model was potentially modified

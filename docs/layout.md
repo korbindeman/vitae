@@ -68,7 +68,8 @@ The `.center()` method sets both `align` and `distribute` to `Center`, centering
 When width or height is `Length::Auto`:
 
 1. **Text elements** - Size is measured using the text measurer (font-aware)
-2. **Container elements** - Size shrinks to fit content:
+2. **Image/SVG elements** - Use intrinsic dimensions from the asset
+3. **Container elements** - Size shrinks to fit content:
    - In the main axis: sum of children sizes
    - In the cross axis: maximum child size
 
@@ -77,6 +78,8 @@ When width or height is `Length::Auto`:
 If `aspect_ratio` is set and one dimension is zero:
 - If width is 0: `width = height * ratio`
 - If height is 0: `height = width / ratio`
+
+Images and SVGs have intrinsic aspect ratios. If you set only one dimension, the other is calculated automatically to preserve the aspect ratio. An explicit `.aspect_ratio()` value takes precedence over the intrinsic ratio.
 
 ## Box Model
 

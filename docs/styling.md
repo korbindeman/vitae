@@ -97,6 +97,8 @@ Predefined constants: `WHITE`, `BLACK`, `GRAY`, `RED`, `GREEN`, `BLUE`, `YELLOW`
 |----------|-------------|
 | `div()` | Create a div element |
 | `text(content)` | Create a text element |
+| `img(texture)` | Create an image element from a `Texture` |
+| `svg(svg)` | Create an SVG element from an `Svg` |
 | `portal()` | Create a portal element (positioned relative to viewport) |
 
 ### Appearance
@@ -104,6 +106,7 @@ Predefined constants: `WHITE`, `BLACK`, `GRAY`, `RED`, `GREEN`, `BLUE`, `YELLOW`
 | Method | Description |
 |--------|-------------|
 | `.bg(color)` | Set background color |
+| `.color(color)` | Set text color |
 | `.font_size(size)` | Set font size for text elements |
 
 ### Borders
@@ -148,6 +151,5 @@ Border radius clips the background even without a border. Borders are drawn on t
 
 These properties exist on `Style` but don't have builder methods yet:
 
-- `text_color` - Text color (default: black)
 - `wrap` - Enable wrapping (default: false)
 - `reverse` - Reverse child order (default: false)

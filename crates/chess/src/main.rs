@@ -794,23 +794,26 @@ fn view(game: &ChessGame) -> ElementBuilder {
             .col()
             .p(px(8.0))
             .bg(if is_turn {
-                Color::rgb(220, 240, 220)
+                Color::from_hex("#4a6a4a")
             } else {
-                Color::rgb(240, 240, 240)
+                Color::from_hex("#444444")
             })
-            .child(text(format!("{}{}", name, score_str)))
-            .child(text(if captured_str.is_empty() {
-                "-".to_string()
-            } else {
-                captured_str
-            }))
+            .child(text(format!("{}{}", name, score_str)).color(Color::from_hex("#e0e0e0")))
+            .child(
+                text(if captured_str.is_empty() {
+                    "-".to_string()
+                } else {
+                    captured_str
+                })
+                .color(Color::from_hex("#b0b0b0")),
+            )
     };
 
     let button = |label: &str| {
         div()
-            .bg(Color::rgb(200, 200, 200))
+            .bg(Color::from_hex("#444444"))
             .p(px(8.0))
-            .child(text(label))
+            .child(text(label).color(Color::from_hex("#e0e0e0")))
     };
 
     let auto_flip_label = if game.flip_board {
@@ -821,10 +824,11 @@ fn view(game: &ChessGame) -> ElementBuilder {
 
     let side_panel = div()
         .size(FULL)
-        .bg(Color::rgb(240, 240, 240))
+        .border_l(2.0, Color::from_hex("#4a4a4a"))
+        .bg(Color::from_hex("#333333"))
         .p(px(12.0))
         .col()
-        .child(text("Chess"))
+        .child(text("Chess").color(Color::from_hex("#e0e0e0")))
         .child(player_panel(
             "Player 2 (Black)",
             PlayerColor::Black,
@@ -836,9 +840,9 @@ fn view(game: &ChessGame) -> ElementBuilder {
             game.turn == PlayerColor::White,
         ))
         .child(if let Some(ref last_move) = game.last_move {
-            text(format!("Last: {}", last_move))
+            text(format!("Last: {}", last_move)).color(Color::from_hex("#b0b0b0"))
         } else {
-            text("No moves yet")
+            text("No moves yet").color(Color::from_hex("#b0b0b0"))
         })
         .child(
             div()

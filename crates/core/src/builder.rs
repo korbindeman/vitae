@@ -286,6 +286,12 @@ impl ElementBuilder {
         self
     }
 
+    /// Set the text color.
+    pub fn color(mut self, color: Color) -> Self {
+        self.style.text_color = color;
+        self
+    }
+
     /// Set the gap between children on both axes.
     pub fn gap(mut self, length: Length) -> Self {
         self.style.gap_x = length;

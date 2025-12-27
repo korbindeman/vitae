@@ -215,6 +215,8 @@ pub struct Style {
     pub right: Option<Length>,
     pub bottom: Option<Length>,
     pub left: Option<Length>,
+
+    pub opacity: f32,
 }
 
 impl Default for Style {
@@ -242,6 +244,7 @@ impl Default for Style {
             right: None,
             bottom: None,
             left: None,
+            opacity: 1.0,
         }
     }
 }

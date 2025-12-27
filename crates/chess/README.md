@@ -23,15 +23,16 @@ A chess game built with Vitae.
 - [x] Castling
 - [x] Captured pieces display
 - [x] Check detection (can't move into check, can't ignore check)
+- [x] Check highlight (king square turns red)
+- [x] Checkmate/stalemate detection
+- [x] Game reset button
+- [x] Move history list
+- [x] Undo/redo
+- [x] Pawn promotion
 
 ### Not Yet Implemented
-- [ ] Pawn promotion
-- [ ] Checkmate/stalemate detection
-- [ ] Move history list
-- [ ] Game reset button
 - [ ] Drag and drop movement
 - [ ] Sound effects
-- [ ] Undo move
 - [ ] Timer/clock
 
 ## Validation Strategy

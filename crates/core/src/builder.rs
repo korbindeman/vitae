@@ -292,6 +292,12 @@ impl ElementBuilder {
         self
     }
 
+    /// Set the opacity of the element (0.0 = fully transparent, 1.0 = fully opaque).
+    pub fn opacity(mut self, opacity: f32) -> Self {
+        self.style.opacity = opacity.clamp(0.0, 1.0);
+        self
+    }
+
     /// Set the gap between children on both axes.
     pub fn gap(mut self, length: Length) -> Self {
         self.style.gap_x = length;

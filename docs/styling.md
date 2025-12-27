@@ -108,6 +108,9 @@ Predefined constants: `WHITE`, `BLACK`, `GRAY`, `RED`, `GREEN`, `BLUE`, `YELLOW`
 | `.bg(color)` | Set background color |
 | `.color(color)` | Set text color |
 | `.font_size(size)` | Set font size for text elements |
+| `.opacity(value)` | Set opacity (0.0 = transparent, 1.0 = opaque) |
+
+Opacity is inherited by children. A parent with `.opacity(0.5)` containing a child with `.opacity(0.5)` results in the child having an effective opacity of 0.25.
 
 ### Borders
 

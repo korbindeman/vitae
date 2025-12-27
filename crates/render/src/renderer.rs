@@ -5,7 +5,7 @@ use parley::{FontContext, LayoutContext, LineHeight, StyleProperty};
 use pollster::FutureExt;
 use vello::kurbo::{Affine, Cap, Join, Rect, RoundedRect, RoundedRectRadii, Stroke};
 use vello::peniko::{
-    color::palette, Blob, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat,
+    color::palette, BlendMode, Blob, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat,
 };
 use vello::wgpu::{self, CommandEncoderDescriptor};
 use vello::{AaConfig, NormalizedCoord, RenderParams, RendererOptions, Scene};
@@ -174,11 +174,11 @@ impl<'a> Renderer<'a> {
         // Build the Vello scene from the tree
         self.scene.reset();
         let mut portals = Vec::new();
-        self.render_node(&tree, root, &mut portals);
+        self.render_node(&tree, root, 1.0, &mut portals);
 
         // Render portals last (on top of everything)
         for portal_id in portals {
-            self.render_node_and_children(&tree, portal_id);
+            self.render_node_and_children(&tree, portal_id, 1.0);
         }
 
         // Put the tree back
@@ -222,13 +222,30 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
-    fn render_node(&mut self, tree: &ElementTree, id: NodeId, portals: &mut Vec<NodeId>) {
+    fn render_node(
+        &mut self,
+        tree: &ElementTree,
+        id: NodeId,
+        parent_opacity: f32,
+        portals: &mut Vec<NodeId>,
+    ) {
         let node = tree.get_node(id);
         let layout = node.layout;
 
+        // Get the node's own opacity and combine with parent opacity
+        let node_opacity = node.style().map(|s| s.opacity).unwrap_or(1.0);
+        let effective_opacity = parent_opacity * node_opacity;
+
         match &node.kind {
             NodeKind::Element { style } => {
-                self.render_element_box(style, layout.x, layout.y, layout.width, layout.height);
+                self.render_element_box(
+                    style,
+                    layout.x,
+                    layout.y,
+                    layout.width,
+                    layout.height,
+                    effective_opacity,
+                );
             }
             NodeKind::Text { content, style } => {
                 let text_color = style.text_color.to_array();
@@ -240,13 +257,28 @@ impl<'a> Renderer<'a> {
                     layout.width,
                     font_size,
                     [text_color[0], text_color[1], text_color[2], text_color[3]],
+                    effective_opacity,
                 );
             }
             NodeKind::Texture { texture, style: _ } => {
-                self.render_texture(texture, layout.x, layout.y, layout.width, layout.height);
+                self.render_texture(
+                    texture,
+                    layout.x,
+                    layout.y,
+                    layout.width,
+                    layout.height,
+                    effective_opacity,
+                );
             }
             NodeKind::Svg { svg, style: _ } => {
-                self.render_svg(svg, layout.x, layout.y, layout.width, layout.height);
+                self.render_svg(
+                    svg,
+                    layout.x,
+                    layout.y,
+                    layout.width,
+                    layout.height,
+                    effective_opacity,
+                );
             }
         }
 
@@ -261,19 +293,30 @@ impl<'a> Renderer<'a> {
                     continue;
                 }
             }
-            self.render_node(tree, child_id, portals);
+            self.render_node(tree, child_id, effective_opacity, portals);
             child = tree.get_node(child_id).next_sibling;
         }
     }
 
     /// Render a node and all its children (used for portals, no portal collection).
-    fn render_node_and_children(&mut self, tree: &ElementTree, id: NodeId) {
+    fn render_node_and_children(&mut self, tree: &ElementTree, id: NodeId, parent_opacity: f32) {
         let node = tree.get_node(id);
         let layout = node.layout;
 
+        // Get the node's own opacity and combine with parent opacity
+        let node_opacity = node.style().map(|s| s.opacity).unwrap_or(1.0);
+        let effective_opacity = parent_opacity * node_opacity;
+
         match &node.kind {
             NodeKind::Element { style } => {
-                self.render_element_box(style, layout.x, layout.y, layout.width, layout.height);
+                self.render_element_box(
+                    style,
+                    layout.x,
+                    layout.y,
+                    layout.width,
+                    layout.height,
+                    effective_opacity,
+                );
             }
             NodeKind::Text { content, style } => {
                 let text_color = style.text_color.to_array();
@@ -285,19 +328,34 @@ impl<'a> Renderer<'a> {
                     layout.width,
                     font_size,
                     [text_color[0], text_color[1], text_color[2], text_color[3]],
+                    effective_opacity,
                 );
             }
             NodeKind::Texture { texture, style: _ } => {
-                self.render_texture(texture, layout.x, layout.y, layout.width, layout.height);
+                self.render_texture(
+                    texture,
+                    layout.x,
+                    layout.y,
+                    layout.width,
+                    layout.height,
+                    effective_opacity,
+                );
             }
             NodeKind::Svg { svg, style: _ } => {
-                self.render_svg(svg, layout.x, layout.y, layout.width, layout.height);
+                self.render_svg(
+                    svg,
+                    layout.x,
+                    layout.y,
+                    layout.width,
+                    layout.height,
+                    effective_opacity,
+                );
             }
         }
 
         let mut child = node.first_child;
         while let Some(child_id) = child {
-            self.render_node_and_children(tree, child_id);
+            self.render_node_and_children(tree, child_id, effective_opacity);
             child = tree.get_node(child_id).next_sibling;
         }
     }
@@ -310,6 +368,7 @@ impl<'a> Renderer<'a> {
         y: f32,
         width: f32,
         height: f32,
+        opacity: f32,
     ) {
         let rect = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
 
@@ -319,9 +378,14 @@ impl<'a> Renderer<'a> {
 
         // Draw background
         let bg_color = style.bg_color.to_array();
-        if bg_color[3] > 0.0 {
-            let vello_color =
-                vello::peniko::Color::new([bg_color[0], bg_color[1], bg_color[2], bg_color[3]]);
+        let effective_bg_alpha = bg_color[3] * opacity;
+        if effective_bg_alpha > 0.0 {
+            let vello_color = vello::peniko::Color::new([
+                bg_color[0],
+                bg_color[1],
+                bg_color[2],
+                effective_bg_alpha,
+            ]);
 
             if has_radius {
                 let rounded_rect = RoundedRect::from_rect(
@@ -355,11 +419,12 @@ impl<'a> Renderer<'a> {
         if uniform_border && border.top.width > 0.0 {
             // Draw uniform border as a single stroke
             let border_color = border.top.color.to_array();
+            let effective_border_alpha = border_color[3] * opacity;
             let vello_color = vello::peniko::Color::new([
                 border_color[0],
                 border_color[1],
                 border_color[2],
-                border_color[3],
+                effective_border_alpha,
             ]);
             let stroke = Stroke::new(border.top.width as f64)
                 .with_caps(Cap::Butt)
@@ -378,7 +443,7 @@ impl<'a> Renderer<'a> {
             }
         } else {
             // Draw individual borders
-            self.render_individual_borders(style, x, y, width, height);
+            self.render_individual_borders(style, x, y, width, height, opacity);
         }
     }
 
@@ -390,6 +455,7 @@ impl<'a> Renderer<'a> {
         y: f32,
         width: f32,
         height: f32,
+        opacity: f32,
     ) {
         use vello::kurbo::Line;
 
@@ -398,7 +464,8 @@ impl<'a> Renderer<'a> {
         // Top border
         if border.top.width > 0.0 {
             let color = border.top.color.to_array();
-            let vello_color = vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
+            let vello_color =
+                vello::peniko::Color::new([color[0], color[1], color[2], color[3] * opacity]);
             let stroke = Stroke::new(border.top.width as f64).with_caps(Cap::Butt);
             let y_pos = y + border.top.width / 2.0;
             let line = Line::new((x as f64, y_pos as f64), ((x + width) as f64, y_pos as f64));
@@ -409,7 +476,8 @@ impl<'a> Renderer<'a> {
         // Right border
         if border.right.width > 0.0 {
             let color = border.right.color.to_array();
-            let vello_color = vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
+            let vello_color =
+                vello::peniko::Color::new([color[0], color[1], color[2], color[3] * opacity]);
             let stroke = Stroke::new(border.right.width as f64).with_caps(Cap::Butt);
             let x_pos = x + width - border.right.width / 2.0;
             let line = Line::new(
@@ -423,7 +491,8 @@ impl<'a> Renderer<'a> {
         // Bottom border
         if border.bottom.width > 0.0 {
             let color = border.bottom.color.to_array();
-            let vello_color = vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
+            let vello_color =
+                vello::peniko::Color::new([color[0], color[1], color[2], color[3] * opacity]);
             let stroke = Stroke::new(border.bottom.width as f64).with_caps(Cap::Butt);
             let y_pos = y + height - border.bottom.width / 2.0;
             let line = Line::new((x as f64, y_pos as f64), ((x + width) as f64, y_pos as f64));
@@ -434,7 +503,8 @@ impl<'a> Renderer<'a> {
         // Left border
         if border.left.width > 0.0 {
             let color = border.left.color.to_array();
-            let vello_color = vello::peniko::Color::new([color[0], color[1], color[2], color[3]]);
+            let vello_color =
+                vello::peniko::Color::new([color[0], color[1], color[2], color[3] * opacity]);
             let stroke = Stroke::new(border.left.width as f64).with_caps(Cap::Butt);
             let x_pos = x + border.left.width / 2.0;
             let line = Line::new(
@@ -454,6 +524,7 @@ impl<'a> Renderer<'a> {
         max_width: f32,
         font_size: f32,
         color: [f32; 4],
+        opacity: f32,
     ) {
         let line_height = 1.2;
 
@@ -480,7 +551,8 @@ impl<'a> Renderer<'a> {
         let mut text_layout = builder.build(text);
         text_layout.break_all_lines(Some(max_width));
 
-        let text_color = vello::peniko::Color::new(color);
+        let text_color =
+            vello::peniko::Color::new([color[0], color[1], color[2], color[3] * opacity]);
 
         for line in text_layout.lines() {
             for item in line.items() {
@@ -524,7 +596,15 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    fn render_texture(&mut self, texture: &Texture, x: f32, y: f32, width: f32, height: f32) {
+    fn render_texture(
+        &mut self,
+        texture: &Texture,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        opacity: f32,
+    ) {
         // Create peniko ImageData from texture data
         let blob: Blob<u8> = texture.data().to_vec().into();
         let image_data = ImageData {
@@ -534,7 +614,7 @@ impl<'a> Renderer<'a> {
             width: texture.width(),
             height: texture.height(),
         };
-        let image_brush = ImageBrush::new(image_data);
+        let image_brush = ImageBrush::new(image_data).with_alpha(opacity);
 
         // Calculate scale to fit the layout dimensions
         let scale_x = width / texture.width() as f32;
@@ -547,7 +627,7 @@ impl<'a> Renderer<'a> {
         self.scene.draw_image(image_brush.as_ref(), transform);
     }
 
-    fn render_svg(&mut self, svg: &Svg, x: f32, y: f32, width: f32, height: f32) {
+    fn render_svg(&mut self, svg: &Svg, x: f32, y: f32, width: f32, height: f32, opacity: f32) {
         // Parse the SVG
         let tree =
             match vello_svg::usvg::Tree::from_str(svg.data(), &vello_svg::usvg::Options::default())
@@ -564,9 +644,19 @@ impl<'a> Renderer<'a> {
         let transform = Affine::scale_non_uniform(scale_x as f64, scale_y as f64)
             .then_translate((x as f64, y as f64).into());
 
-        // Render the SVG to a scene and append it with transform
+        // Render the SVG to a scene
         let svg_scene = vello_svg::render_tree(&tree);
-        self.scene.append(&svg_scene, Some(transform));
+
+        // Apply opacity using a layer if needed
+        if opacity < 1.0 {
+            let clip_rect = Rect::new(0.0, 0.0, width as f64, height as f64);
+            self.scene
+                .push_layer(BlendMode::default(), opacity, transform, &clip_rect);
+            self.scene.append(&svg_scene, None);
+            self.scene.pop_layer();
+        } else {
+            self.scene.append(&svg_scene, Some(transform));
+        }
     }
 
     pub fn window(&self) -> &Window {
